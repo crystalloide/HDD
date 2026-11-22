@@ -1,0 +1,6 @@
+# TP3 — création de la table du catalogue (shell HBase)
+#   hbase shell -n < creer_catalogue.hbase
+# Famille info : 3 versions conservées par cellule (historique des prix)
+# Famille stock : 1 version (valeur par défaut)
+create 'catalogue', {NAME => 'info', VERSIONS => 3}, 'stock'
+describe 'catalogue'

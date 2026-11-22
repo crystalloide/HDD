@@ -1,0 +1,1295 @@
+{
+  "paragraphs": [
+    {
+      "title": "Présentation du TP",
+      "text": "%md\n## TP1 — Collecte d'informations clientèles et tâches MapReduce\n\n**Objectif** : collecter des fichiers clients dans HDFS, les contrôler et les normaliser avec un job MapReduce, puis produire le nombre de clients et le chiffre d'affaires par ville.\n\nProgramme HDD : *gérer la collecte d'informations clientèles par MapReduce* et *développer une tâche basée sur MapReduce*. Durée indicative : 2 h 30.\n\n| Étape | Contenu |\n|---|---|\n| 1. Collecter | déposer les fichiers des 3 canaux (CRM, web, magasins) dans `/data/raw/clients` |\n| 2. Développer | `ClientsMapper`, `ClientsReducer`, driver `ClientsParVille` (API `org.apache.hadoop.mapreduce`) |\n| 3. Contrôler la collecte | job « map seul » `CollecteClients` : règles qualité, compteurs, fichiers de rejets |\n| 4. Exécuter et contrôler | clients par ville sur les données propres ; `_SUCCESS`, `part-r-*`, compteurs |\n| 5. Optimiser | combiner, 2 reducers : comparer les compteurs |\n| 6. Développer une tâche | `CaParVille` : chiffre d'affaires par ville |\n\n**Critères de réussite** : le job se termine à l'état SUCCEEDED dans YARN ; les totaux par ville correspondent aux fichiers source ; le compteur *Reduce input records* baisse avec le combiner ; deux fichiers `part-r-*` avec 2 reducers.\n\nPrérequis : profil `zeppelin` (ou `full`). On compile avec `javac` dans le conteneur Zeppelin : c'est l'équivalent de `mvn package` (le `pom.xml` est fourni dans `tp/tp1-mapreduce` pour travailler dans un IDE).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_431931526",
+      "id": "20261123-090001_431931526",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>TP1 — Collecte d'informations clientèles et tâches MapReduce</h2>\n<p><strong>Objectif</strong> : collecter des fichiers clients dans HDFS, les contrôler et les normaliser avec un job MapReduce, puis produire le nombre de clients et le chiffre d'affaires par ville.</p>\n<p>Programme HDD : <em>gérer la collecte d'informations clientèles par MapReduce</em> et <em>développer une tâche basée sur MapReduce</em>. Durée indicative : 2 h 30.</p>\n<table>\n<thead>\n<tr>\n<th>Étape</th>\n<th>Contenu</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1. Collecter</td>\n<td>déposer les fichiers des 3 canaux (CRM, web, magasins) dans <code>/data/raw/clients</code></td>\n</tr>\n<tr>\n<td>2. Développer</td>\n<td><code>ClientsMapper</code>, <code>ClientsReducer</code>, driver <code>ClientsParVille</code> (API <code>org.apache.hadoop.mapreduce</code>)</td>\n</tr>\n<tr>\n<td>3. Contrôler la collecte</td>\n<td>job « map seul » <code>CollecteClients</code> : règles qualité, compteurs, fichiers de rejets</td>\n</tr>\n<tr>\n<td>4. Exécuter et contrôler</td>\n<td>clients par ville sur les données propres ; <code>_SUCCESS</code>, <code>part-r-*</code>, compteurs</td>\n</tr>\n<tr>\n<td>5. Optimiser</td>\n<td>combiner, 2 reducers : comparer les compteurs</td>\n</tr>\n<tr>\n<td>6. Développer une tâche</td>\n<td><code>CaParVille</code> : chiffre d'affaires par ville</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Critères de réussite</strong> : le job se termine à l'état SUCCEEDED dans YARN ; les totaux par ville correspondent aux fichiers source ; le compteur <em>Reduce input records</em> baisse avec le combiner ; deux fichiers <code>part-r-*</code> avec 2 reducers.</p>\n<p>Prérequis : profil <code>zeppelin</code> (ou <code>full</code>). On compile avec <code>javac</code> dans le conteneur Zeppelin : c'est l'équivalent de <code>mvn package</code> (le <code>pom.xml</code> est fourni dans <code>tp/tp1-mapreduce</code> pour travailler dans un IDE).</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 1",
+      "text": "%md\n### Étape 1 — Collecter\n\nLes trois fichiers du jour viennent de trois canaux. Format : `id;nom;ville;ca;segment;canal;date_inscription`, avec une ligne d'en-tête. Un même client peut figurer dans plusieurs canaux.\n\n**À faire** : examiner les fichiers, puis les déposer dans `/data/raw/clients` sur HDFS et vérifier leurs blocs.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_701831324",
+      "id": "20261123-090002_701831324",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 1 — Collecter</h3>\n<p>Les trois fichiers du jour viennent de trois canaux. Format : <code>id;nom;ville;ca;segment;canal;date_inscription</code>, avec une ligne d'en-tête. Un même client peut figurer dans plusieurs canaux.</p>\n<p><strong>À faire</strong> : examiner les fichiers, puis les déposer dans <code>/data/raw/clients</code> sur HDFS et vérifier leurs blocs.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1.1 Examiner les fichiers sources",
+      "text": "%sh\nls -l /opt/data/hdd/clients/\nwc -l /opt/data/hdd/clients/*.csv\necho \"--- début du fichier CRM\"\nhead -4 /opt/data/hdd/clients/crm_2026-11.csv\necho \"--- quelques saisies de villes à normaliser\"\ncut -d';' -f3 /opt/data/hdd/clients/*.csv | grep -iE '^ |paris$|saint' | sort | uniq -c | sort -rn | head -8",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_876079327",
+      "id": "20261123-090003_876079327",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "1.2 Déposer dans HDFS",
+      "text": "%sh\n# TODO : créer /data/raw/clients sur HDFS (hdfs dfs -mkdir -p ...)\n# TODO : y déposer les 3 fichiers de /opt/data/hdd/clients (hdfs dfs -put -f ...)\n# TODO : lister le répertoire avec les tailles lisibles (-ls -h)\n\n# Blocs et réplication (fsck est réservé au superutilisateur « hadoop »)\nHADOOP_USER_NAME=hadoop hdfs fsck /data/raw/clients -files -blocks | grep -E 'csv|blk_|Total blocks|replication'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_296202760",
+      "id": "20261123-090004_296202760",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 2",
+      "text": "%md\n### Étape 2 — Développer le job « clients par ville »\n\nLe code est celui du support (chapitre 2) : le mapper émet `(ville, 1)` pour chaque ligne, le reducer additionne. Le driver utilise `ToolRunner` : les options `-D propriété=valeur` de la ligne de commande sont lues sans recompiler.\n\nChaque paragraphe écrit un fichier source dans `/tmp/hdd/tp1/src`. Exécutez-les tous, puis compilez.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_74888093",
+      "id": "20261123-090005_074888093",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 2 — Développer le job « clients par ville »</h3>\n<p>Le code est celui du support (chapitre 2) : le mapper émet <code>(ville, 1)</code> pour chaque ligne, le reducer additionne. Le driver utilise <code>ToolRunner</code> : les options <code>-D propriété=valeur</code> de la ligne de commande sont lues sans recompiler.</p>\n<p>Chaque paragraphe écrit un fichier source dans <code>/tmp/hdd/tp1/src</code>. Exécutez-les tous, puis compilez.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "2.1 ClientsMapper.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsMapper.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.io.IntWritable;\nimport org.apache.hadoop.io.LongWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Mapper;\n\n/**\n * Map : (position, \"id;nom;ville;...\") -> (ville, 1)\n * La pause optionnelle (hdd.map.pause.ms) servira au TP YARN : ne pas la retirer.\n */\npublic class ClientsMapper extends Mapper<LongWritable, Text, Text, IntWritable> {\n\n  private static final IntWritable UN = new IntWritable(1);\n  private final Text ville = new Text();\n\n  @Override\n  protected void setup(Context ctx) throws InterruptedException {\n    long pause = ctx.getConfiguration().getLong(\"hdd.map.pause.ms\", 0L);\n    if (pause > 0) {\n      Thread.sleep(pause);\n    }\n  }\n\n  @Override\n  protected void map(LongWritable off, Text ligne, Context ctx)\n      throws IOException, InterruptedException {\n    // TODO 1 : découper la ligne sur « ; » (la ville est le 3e champ)\n    // TODO 2 : si la ligne a au moins 3 champs, émettre (ville, 1) avec ctx.write(...)\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsMapper.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_756259654",
+      "id": "20261123-090006_756259654",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.2 ClientsReducer.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsReducer.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.io.IntWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Reducer;\n\n/**\n * Reduce : (ville, [1, 1, ...]) -> (ville, total)\n */\npublic class ClientsReducer extends Reducer<Text, IntWritable, Text, IntWritable> {\n\n  private final IntWritable resultat = new IntWritable();\n\n  @Override\n  protected void reduce(Text ville, Iterable<IntWritable> vals, Context ctx)\n      throws IOException, InterruptedException {\n    // TODO : additionner les valeurs, puis émettre (ville, total)\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsReducer.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_838761502",
+      "id": "20261123-090007_838761502",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.3 ClientsParVille.java (driver)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsParVille.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport org.apache.hadoop.conf.Configured;\nimport org.apache.hadoop.fs.Path;\nimport org.apache.hadoop.io.IntWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Job;\nimport org.apache.hadoop.mapreduce.lib.input.FileInputFormat;\nimport org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;\nimport org.apache.hadoop.util.Tool;\nimport org.apache.hadoop.util.ToolRunner;\n\n/**\n * Driver : nombre de clients par ville.\n *\n *   yarn jar clients.jar fr.orsys.hdd.tp1.ClientsParVille [options -D] <entrée> <sortie>\n *\n * Options (-D, lues grâce à ToolRunner) :\n *   hdd.combiner=true            active le combiner (= ClientsReducer)\n *   mapreduce.job.reduces=2      nombre de reducers (1 par défaut)\n *   mapreduce.job.queuename=dev  file YARN (TP YARN)\n *   hdd.map.pause.ms=3000        pause au démarrage de chaque map (TP YARN)\n */\npublic class ClientsParVille extends Configured implements Tool {\n\n  @Override\n  public int run(String[] args) throws Exception {\n    if (args.length != 2) {\n      System.err.println(\"Usage : ClientsParVille [-D propriété=valeur ...] <entrée> <sortie>\");\n      return 2;\n    }\n    getConf().setIfUnset(\"mapreduce.output.textoutputformat.separator\", \";\");\n    Job job = Job.getInstance(getConf(), \"clients-par-ville\");\n    job.setJarByClass(ClientsParVille.class);\n    // TODO 1 : déclarer la classe du mapper et celle du reducer\n    // TODO 2 : (étape 5) si la propriété hdd.combiner vaut true, déclarer ClientsReducer comme combiner\n    //          indice : getConf().getBoolean(\"hdd.combiner\", false)\n    // TODO 3 : déclarer les types de la clé et de la valeur en sortie (Text, IntWritable)\n    // Le nombre de reducers vient de mapreduce.job.reduces (-D) : pas de valeur\n    // codée en dur ici, pour pouvoir comparer 1 et 2 reducers sans recompiler.\n    FileInputFormat.addInputPath(job, new Path(args[0]));\n    FileOutputFormat.setOutputPath(job, new Path(args[1]));\n\n    boolean ok = job.waitForCompletion(true);\n    Resultats.afficher(job);\n    return ok ? 0 : 1;\n  }\n\n  public static void main(String[] args) throws Exception {\n    System.exit(ToolRunner.run(new ClientsParVille(), args));\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/ClientsParVille.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_951094610",
+      "id": "20261123-090008_951094610",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.4 Resultats.java (affichage des compteurs, fourni)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/Resultats.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.mapreduce.Counters;\nimport org.apache.hadoop.mapreduce.Job;\nimport org.apache.hadoop.mapreduce.TaskCounter;\n\n/** Affiche l'identifiant du job et les compteurs utiles aux TP (lignes greppables). */\nfinal class Resultats {\n\n  private Resultats() { }\n\n  static void afficher(Job job) throws IOException, InterruptedException {\n    System.out.println(\"HDD_JOB_ID=\" + job.getJobID());\n    System.out.println(\"HDD_ETAT=\" + job.getJobState());\n    Counters c = job.getCounters();\n    if (c == null) {\n      return;\n    }\n    System.out.printf(\"HDD_COMPTEURS map_in=%d map_out=%d combine_in=%d combine_out=%d reduce_in=%d reduce_out=%d%n\",\n        c.findCounter(TaskCounter.MAP_INPUT_RECORDS).getValue(),\n        c.findCounter(TaskCounter.MAP_OUTPUT_RECORDS).getValue(),\n        c.findCounter(TaskCounter.COMBINE_INPUT_RECORDS).getValue(),\n        c.findCounter(TaskCounter.COMBINE_OUTPUT_RECORDS).getValue(),\n        c.findCounter(TaskCounter.REDUCE_INPUT_RECORDS).getValue(),\n        c.findCounter(TaskCounter.REDUCE_OUTPUT_RECORDS).getValue());\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/Resultats.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_489309295",
+      "id": "20261123-090009_489309295",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.5 Villes.java (normalisation des villes, fournie)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/Villes.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.text.Normalizer;\nimport java.util.Locale;\n\n/**\n * Règle de normalisation des villes, commune à tout le lab\n * (mapper de collecte, UDF Pig NormaliseVille, version PySpark) :\n * espaces superflus retirés, accents retirés, majuscules.\n * \"  saint-étienne \" -> \"SAINT-ETIENNE\"\n */\npublic final class Villes {\n\n  private Villes() { }\n\n  public static String normalise(String brute) {\n    if (brute == null) {\n      return \"\";\n    }\n    String sansAccents = Normalizer.normalize(brute, Normalizer.Form.NFD)\n        .replaceAll(\"\\\\p{M}+\", \"\");\n    return sansAccents.trim().replaceAll(\"\\\\s+\", \" \").toUpperCase(Locale.ROOT);\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/Villes.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_580762283",
+      "id": "20261123-090010_580762283",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.6 Compiler et empaqueter (clients.jar)",
+      "text": "%sh\ncd /tmp/hdd/tp1\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$(hadoop classpath)\" -d classes $(find src -name '*.java') \\\n  && /opt/jdk17/bin/jar cf clients.jar -C classes . \\\n  && echo \"OK : $(ls -l clients.jar)\" && /opt/jdk17/bin/jar tf clients.jar | grep class",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_810133787",
+      "id": "20261123-090011_810133787",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.7 Premier essai sur les données brutes",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/villes_brut\nyarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n     /data/raw/clients /data/out/villes_brut 2>&1 | tee /tmp/hdd/tp1/run_brut.log | grep -E 'Submitted application|map [0-9]+% reduce|HDD_|ERROR|Exception'\necho \"--- nombre de « villes » trouvées : $(hdfs dfs -cat /data/out/villes_brut/part-r-* | wc -l)\"\nhdfs dfs -cat /data/out/villes_brut/part-r-* | head -12",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_934433185",
+      "id": "20261123-090012_934433185",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Analyse",
+      "text": "%md\n**Que constatez-vous ?** Une centaine de « villes » au lieu de 24 : la ligne d'en-tête compte comme une ville (`ville`), les villes vides forment un groupe, `Paris`, `PARIS` et ` paris ` sont trois clés différentes, les lignes au mauvais séparateur passent entières…\n\nLe calcul est juste, ce sont les données qui ne le sont pas. D'où l'étape de **collecte** : contrôler et normaliser chaque ligne avant de calculer.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000013_732813886",
+      "id": "20261123-090013_732813886",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Que constatez-vous ?</strong> Une centaine de « villes » au lieu de 24 : la ligne d'en-tête compte comme une ville (<code>ville</code>), les villes vides forment un groupe, <code>Paris</code>, <code>PARIS</code> et <code>paris</code> sont trois clés différentes, les lignes au mauvais séparateur passent entières…</p>\n<p>Le calcul est juste, ce sont les données qui ne le sont pas. D'où l'étape de <strong>collecte</strong> : contrôler et normaliser chaque ligne avant de calculer.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 3",
+      "text": "%md\n### Étape 3 — Contrôler la collecte : un job « map seul »\n\n`CollecteMapper` vérifie chaque ligne (règles ci-dessous), normalise la ville et le CA, et écrit :\n\n* les lignes valides dans `part-m-*` ;\n* les lignes écartées dans `rejets-m-*` (avec `MultipleOutputs`), précédées de leur motif et du fichier d'origine.\n\nIl n'y a **pas de reducer** (`setNumReduceTasks(0)`) : aucune agrégation n'est nécessaire, chaque map écrit directement sa sortie. Les **compteurs** (`context.getCounter`) dressent le bilan qualité de la collecte.\n\n| Règle | Motif de rejet |\n|---|---|\n| exactement 7 champs | `FORMAT` |\n| ligne d'en-tête (`id;...`) | non rejetée : comptée dans `ENTETES` |\n| identifiant `C` + 6 chiffres | `ID_INVALIDE` |\n| ville renseignée (après normalisation) | `VILLE_ABSENTE` |\n| CA numérique et positif | `CA_INVALIDE` |\n| date `aaaa-mm-jj` | `DATE_INVALIDE` |",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000014_865670928",
+      "id": "20261123-090014_865670928",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 3 — Contrôler la collecte : un job « map seul »</h3>\n<p><code>CollecteMapper</code> vérifie chaque ligne (règles ci-dessous), normalise la ville et le CA, et écrit :</p>\n<ul>\n<li>les lignes valides dans <code>part-m-*</code> ;</li>\n<li>les lignes écartées dans <code>rejets-m-*</code> (avec <code>MultipleOutputs</code>), précédées de leur motif et du fichier d'origine.</li>\n</ul>\n<p>Il n'y a <strong>pas de reducer</strong> (<code>setNumReduceTasks(0)</code>) : aucune agrégation n'est nécessaire, chaque map écrit directement sa sortie. Les <strong>compteurs</strong> (<code>context.getCounter</code>) dressent le bilan qualité de la collecte.</p>\n<table>\n<thead>\n<tr>\n<th>Règle</th>\n<th>Motif de rejet</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>exactement 7 champs</td>\n<td><code>FORMAT</code></td>\n</tr>\n<tr>\n<td>ligne d'en-tête (<code>id;...</code>)</td>\n<td>non rejetée : comptée dans <code>ENTETES</code></td>\n</tr>\n<tr>\n<td>identifiant <code>C</code> + 6 chiffres</td>\n<td><code>ID_INVALIDE</code></td>\n</tr>\n<tr>\n<td>ville renseignée (après normalisation)</td>\n<td><code>VILLE_ABSENTE</code></td>\n</tr>\n<tr>\n<td>CA numérique et positif</td>\n<td><code>CA_INVALIDE</code></td>\n</tr>\n<tr>\n<td>date <code>aaaa-mm-jj</code></td>\n<td><code>DATE_INVALIDE</code></td>\n</tr>\n</tbody>\n</table>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "3.1 CollecteMapper.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CollecteMapper.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.io.IOException;\nimport java.util.Locale;\nimport java.util.regex.Pattern;\n\nimport org.apache.hadoop.io.LongWritable;\nimport org.apache.hadoop.io.NullWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Mapper;\nimport org.apache.hadoop.mapreduce.lib.input.FileSplit;\nimport org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;\n\n/**\n * Collecte des informations clientèles : contrôle et normalisation de chaque\n * ligne des fichiers sources (CRM, web, magasins).\n *\n * Entrée  : id;nom;ville;ca;segment;canal;date_inscription (une ligne par client et par canal)\n * Sortie  : la même ligne, nettoyée (ville normalisée, CA à 2 décimales)\n * Rejets  : fichiers \"rejets-m-*\" dans le même répertoire, au format motif;fichier;ligne d'origine\n *\n * Job « map seul » : aucune agrégation, donc pas de reducer.\n */\npublic class CollecteMapper extends Mapper<LongWritable, Text, NullWritable, Text> {\n\n  /** Compteurs du job, visibles dans la console et dans l'historique (JobHistory). */\n  public enum Collecte { LIGNES_LUES, LIGNES_VALIDES, ENTETES, LIGNES_VIDES, REJETS }\n\n  private static final Pattern ID = Pattern.compile(\"C\\\\d{6}\");\n  private static final Pattern DATE = Pattern.compile(\"\\\\d{4}-\\\\d{2}-\\\\d{2}\");\n\n  private MultipleOutputs<NullWritable, Text> sorties;\n  private String fichier;\n  private final Text sortie = new Text();\n\n  @Override\n  protected void setup(Context context) {\n    sorties = new MultipleOutputs<>(context);\n    fichier = ((FileSplit) context.getInputSplit()).getPath().getName();\n  }\n\n  @Override\n  protected void map(LongWritable position, Text valeur, Context context)\n      throws IOException, InterruptedException {\n    context.getCounter(Collecte.LIGNES_LUES).increment(1);\n    String ligne = valeur.toString();\n    if (ligne.trim().isEmpty()) {\n      context.getCounter(Collecte.LIGNES_VIDES).increment(1);\n      return;\n    }\n    String[] f = ligne.split(\";\", -1);          // -1 : garde les champs vides en fin de ligne\n    // Règles de collecte, dans cet ordre (une règle non respectée => rejeter(MOTIF, ligne, context); return;)\n    //  1. exactement 7 champs, sinon motif \"FORMAT\"\n    //  2. en-tête (1er champ = \"id\") : incrémenter Collecte.ENTETES puis return (ce n'est pas un rejet)\n    //  3. identifiant au format C + 6 chiffres (pattern ID), sinon \"ID_INVALIDE\"\n    //  4. ville normalisée non vide (Villes.normalise), sinon \"VILLE_ABSENTE\"\n    //  5. CA lisible (Double.parseDouble) et positif, sinon \"CA_INVALIDE\"\n    //  6. date au format aaaa-mm-jj (pattern DATE), sinon \"DATE_INVALIDE\"\n    // TODO : écrire ces contrôles et calculer id, ville, ca, date\n    String id = \"\";       // TODO\n    String ville = \"\";    // TODO\n    double ca = 0;        // TODO\n    String date = \"\";     // TODO\n\n    sortie.set(String.join(\";\", id, f[1].trim(), ville,\n        String.format(Locale.ROOT, \"%.2f\", ca),\n        f[4].trim().toLowerCase(Locale.ROOT), f[5].trim().toLowerCase(Locale.ROOT), date));\n    context.write(NullWritable.get(), sortie);\n    context.getCounter(Collecte.LIGNES_VALIDES).increment(1);\n  }\n\n  private void rejeter(String motif, String ligne, Context context)\n      throws IOException, InterruptedException {\n    context.getCounter(Collecte.REJETS).increment(1);\n    context.getCounter(\"Rejets par motif\", motif).increment(1);\n    sorties.write(CollecteClients.SORTIE_REJETS, NullWritable.get(),\n        new Text(motif + \";\" + fichier + \";\" + ligne), CollecteClients.SORTIE_REJETS);\n  }\n\n  @Override\n  protected void cleanup(Context context) throws IOException, InterruptedException {\n    sorties.close();\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CollecteMapper.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000015_418734598",
+      "id": "20261123-090015_418734598",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.2 CollecteClients.java (driver, fourni)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CollecteClients.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport org.apache.hadoop.conf.Configured;\nimport org.apache.hadoop.fs.Path;\nimport org.apache.hadoop.io.NullWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Counters;\nimport org.apache.hadoop.mapreduce.Job;\nimport org.apache.hadoop.mapreduce.lib.input.FileInputFormat;\nimport org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;\nimport org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;\nimport org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;\nimport org.apache.hadoop.util.Tool;\nimport org.apache.hadoop.util.ToolRunner;\n\n/**\n * Driver du job de collecte (map seul).\n *\n *   yarn jar clients.jar fr.orsys.hdd.tp1.CollecteClients /data/raw/clients /data/clean/clients\n *\n * Résultat : part-m-* (lignes valides) et rejets-m-* (lignes écartées, avec leur motif).\n */\npublic class CollecteClients extends Configured implements Tool {\n\n  static final String SORTIE_REJETS = \"rejets\";\n\n  @Override\n  public int run(String[] args) throws Exception {\n    if (args.length != 2) {\n      System.err.println(\"Usage : CollecteClients <entrée> <sortie>\");\n      return 2;\n    }\n    Job job = Job.getInstance(getConf(), \"collecte-clients\");\n    job.setJarByClass(CollecteClients.class);\n    job.setMapperClass(CollecteMapper.class);\n    job.setNumReduceTasks(0);                         // job « map seul »\n    job.setOutputKeyClass(NullWritable.class);\n    job.setOutputValueClass(Text.class);\n    MultipleOutputs.addNamedOutput(job, SORTIE_REJETS, TextOutputFormat.class,\n        NullWritable.class, Text.class);\n    FileInputFormat.addInputPath(job, new Path(args[0]));\n    FileOutputFormat.setOutputPath(job, new Path(args[1]));\n\n    boolean ok = job.waitForCompletion(true);\n    Resultats.afficher(job);\n    Counters c = job.getCounters();\n    if (c == null) {\n      return ok ? 0 : 1;\n    }\n    System.out.printf(\"COLLECTE lues=%d valides=%d entetes=%d rejets=%d%n\",\n        c.findCounter(CollecteMapper.Collecte.LIGNES_LUES).getValue(),\n        c.findCounter(CollecteMapper.Collecte.LIGNES_VALIDES).getValue(),\n        c.findCounter(CollecteMapper.Collecte.ENTETES).getValue(),\n        c.findCounter(CollecteMapper.Collecte.REJETS).getValue());\n    return ok ? 0 : 1;\n  }\n\n  public static void main(String[] args) throws Exception {\n    System.exit(ToolRunner.run(new CollecteClients(), args));\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CollecteClients.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000016_482466530",
+      "id": "20261123-090016_482466530",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.3 Recompiler",
+      "text": "%sh\ncd /tmp/hdd/tp1\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$(hadoop classpath)\" -d classes $(find src -name '*.java') \\\n  && /opt/jdk17/bin/jar cf clients.jar -C classes . \\\n  && echo \"OK : $(ls -l clients.jar)\" && /opt/jdk17/bin/jar tf clients.jar | grep class",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000017_37397353",
+      "id": "20261123-090017_037397353",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.4 Exécuter la collecte",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/clean/clients\n# TODO : lancer fr.orsys.hdd.tp1.CollecteClients avec yarn jar, de /data/raw/clients vers /data/clean/clients\n#        (garder la sortie dans un journal : 2>&1 | tee /tmp/hdd/tp1/run_collecte.log | grep -E 'HDD_|COLLECTE')\necho \"--- compteurs « Rejets par motif »\"\ngrep -A8 'Rejets par motif' /tmp/hdd/tp1/run_collecte.log | grep -E '^\\s+[A-Z_]+='\nhdfs dfs -ls /data/clean/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000018_368528346",
+      "id": "20261123-090018_368528346",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.5 Examiner les lignes valides et les rejets",
+      "text": "%sh\necho \"--- lignes valides (extrait)\"\nhdfs dfs -cat /data/clean/clients/part-m-00000 | head -3\necho \"--- rejets par motif et par fichier\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' | cut -d';' -f1,2 | sort | uniq -c\necho \"--- exemples\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' | awk -F';' '!vu[$1]++' | head -5",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000019_773053032",
+      "id": "20261123-090019_773053032",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 4",
+      "text": "%md\n**À noter** : `lignes lues = valides + rejets + en-têtes`. Ouvrez le job dans le **JobHistory** (http://localhost:19888, lien *Counters*) : les compteurs du groupe *Rejets par motif* y figurent.\n\n### Étape 4 — Exécuter et contrôler\n\nOn relance `ClientsParVille` sur les données propres. Le répertoire `/data/clean/clients` contient aussi les rejets : le motif `part-*` ne retient que les lignes valides.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000020_756889773",
+      "id": "20261123-090020_756889773",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>À noter</strong> : <code>lignes lues = valides + rejets + en-têtes</code>. Ouvrez le job dans le <strong>JobHistory</strong> (http://localhost:19888, lien <em>Counters</em>) : les compteurs du groupe <em>Rejets par motif</em> y figurent.</p>\n<h3>Étape 4 — Exécuter et contrôler</h3>\n<p>On relance <code>ClientsParVille</code> sur les données propres. Le répertoire <code>/data/clean/clients</code> contient aussi les rejets : le motif <code>part-*</code> ne retient que les lignes valides.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4.1 Clients par ville (1 reducer, sans combiner)",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/villes\n# TODO : lancer ClientsParVille sur '/data/clean/clients/part-*' vers /data/out/villes\n#        journal : 2>&1 | tee /tmp/hdd/tp1/run_villes_1r.log | grep -E 'Submitted application|HDD_'\nhdfs dfs -ls /data/out/villes\nhdfs dfs -cat /data/out/villes/part-r-* | sort -t';' -k2,2nr | head -10",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000021_463479281",
+      "id": "20261123-090021_463479281",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.2 Contrôler les totaux",
+      "text": "%sh\n# Contrôle indépendant : le même comptage par awk, directement sur les lignes valides\nhdfs dfs -cat '/data/clean/clients/part-*' | awk -F';' '{n[$3]++} END {for (v in n) print v \";\" n[v]}' | sort > /tmp/hdd/tp1/attendu.txt\nhdfs dfs -cat /data/out/villes/part-r-* | sort > /tmp/hdd/tp1/obtenu.txt\nif diff -q /tmp/hdd/tp1/attendu.txt /tmp/hdd/tp1/obtenu.txt > /dev/null; then\n  echo \"IDENTIQUE : $(wc -l < /tmp/hdd/tp1/obtenu.txt) villes, $(awk -F';' '{s+=$2} END {print s}' /tmp/hdd/tp1/obtenu.txt) lignes clients\"\nelse\n  echo \"DIFFÉRENT :\"; diff /tmp/hdd/tp1/attendu.txt /tmp/hdd/tp1/obtenu.txt | head\nfi",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000022_952858915",
+      "id": "20261123-090022_952858915",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 5",
+      "text": "%md\n### Étape 5 — Optimiser : combiner et 2 reducers\n\n* **Combiner** : un reducer local, exécuté à la sortie de chaque map, avant le shuffle. Ici `ClientsReducer` convient, car l'addition est associative et commutative.\n* **2 reducers** : le partitionneur par défaut (`hash(clé) mod 2`) répartit les villes entre deux fichiers `part-r-00000` et `part-r-00001`.\n\nLes deux options se passent en ligne de commande grâce à `ToolRunner` : `-D hdd.combiner=true -D mapreduce.job.reduces=2`. L'option `split.maxsize` découpe les fichiers en morceaux de 256 Ko : on obtient une dizaine de maps, donc un combiner plus visible.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000023_542199078",
+      "id": "20261123-090023_542199078",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 5 — Optimiser : combiner et 2 reducers</h3>\n<ul>\n<li><strong>Combiner</strong> : un reducer local, exécuté à la sortie de chaque map, avant le shuffle. Ici <code>ClientsReducer</code> convient, car l'addition est associative et commutative.</li>\n<li><strong>2 reducers</strong> : le partitionneur par défaut (<code>hash(clé) mod 2</code>) répartit les villes entre deux fichiers <code>part-r-00000</code> et <code>part-r-00001</code>.</li>\n</ul>\n<p>Les deux options se passent en ligne de commande grâce à <code>ToolRunner</code> : <code>-D hdd.combiner=true -D mapreduce.job.reduces=2</code>. L'option <code>split.maxsize</code> découpe les fichiers en morceaux de 256 Ko : on obtient une dizaine de maps, donc un combiner plus visible.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.1 Comparer sans / avec combiner (2 reducers)",
+      "text": "%sh\nfor essai in \"sans:false\" \"avec:true\"; do\n  nom=${essai%%:*}; combiner=${essai##*:}\n  hdfs dfs -rm -r -f -skipTrash /data/out/villes_$nom\n  # TODO : relancer ClientsParVille avec les options\n  #        -D hdd.combiner=$combiner  -D mapreduce.job.reduces=2\n  #        -D mapreduce.input.fileinputformat.split.maxsize=262144\n  #        de '/data/clean/clients/part-*' vers /data/out/villes_$nom\n  #        > /tmp/hdd/tp1/run_villes_$nom.log 2>&1\n  echo \"combiner $nom : $(grep -E 'HDD_ETAT|HDD_COMPTEURS' /tmp/hdd/tp1/run_villes_$nom.log | tr '\\n' ' ')\"\ndone\nhdfs dfs -ls /data/out/villes_avec",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000024_805634831",
+      "id": "20261123-090024_805634831",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Questions",
+      "text": "%md\n**Questions**\n\n1. Combien d'enregistrements entrent dans les reducers sans combiner ? avec combiner ? Pourquoi un tel écart ?\n2. Le combiner change-t-il le résultat final ? Comparez `/data/out/villes_sans` et `/data/out/villes_avec`.\n3. Comment les villes sont-elles réparties entre les deux fichiers `part-r-*` ? Pourrait-on choisir cette répartition ?\n4. Dans le JobHistory, comparez la quantité d'octets échangés pendant le shuffle (*Reduce shuffle bytes*).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000025_564919673",
+      "id": "20261123-090025_564919673",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong></p>\n<ol>\n<li>Combien d'enregistrements entrent dans les reducers sans combiner ? avec combiner ? Pourquoi un tel écart ?</li>\n<li>Le combiner change-t-il le résultat final ? Comparez <code>/data/out/villes_sans</code> et <code>/data/out/villes_avec</code>.</li>\n<li>Comment les villes sont-elles réparties entre les deux fichiers <code>part-r-*</code> ? Pourrait-on choisir cette répartition ?</li>\n<li>Dans le JobHistory, comparez la quantité d'octets échangés pendant le shuffle (<em>Reduce shuffle bytes</em>).</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 6",
+      "text": "%md\n### Étape 6 — Développer une tâche : chiffre d'affaires par ville\n\n**À faire** : écrire `CaParVille` (mapper, reducer servant aussi de combiner, driver), sur le modèle de `ClientsParVille`, avec des `DoubleWritable`. Contrôlez le résultat par awk.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000026_261522453",
+      "id": "20261123-090026_261522453",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 6 — Développer une tâche : chiffre d'affaires par ville</h3>\n<p><strong>À faire</strong> : écrire <code>CaParVille</code> (mapper, reducer servant aussi de combiner, driver), sur le modèle de <code>ClientsParVille</code>, avec des <code>DoubleWritable</code>. Contrôlez le résultat par awk.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "6.1 CaParVille.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp1/src/fr/orsys/hdd/tp1\ncat > /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CaParVille.java <<'EOF'\npackage fr.orsys.hdd.tp1;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.conf.Configured;\nimport org.apache.hadoop.fs.Path;\nimport org.apache.hadoop.io.DoubleWritable;\nimport org.apache.hadoop.io.LongWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Job;\nimport org.apache.hadoop.mapreduce.Mapper;\nimport org.apache.hadoop.mapreduce.Reducer;\nimport org.apache.hadoop.mapreduce.lib.input.FileInputFormat;\nimport org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;\nimport org.apache.hadoop.util.Tool;\nimport org.apache.hadoop.util.ToolRunner;\n\n/**\n * Exercice : chiffre d'affaires par ville, à partir des données collectées\n * (id;nom;ville;ca;segment;canal;date).\n */\npublic class CaParVille extends Configured implements Tool {\n\n  // TODO 1 : mapper CaMapper extends Mapper<LongWritable, Text, Text, DoubleWritable>\n  //          émet (ville, ca) ; une ligne au CA illisible incrémente un compteur et est ignorée\n  public static class CaMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {\n  }\n\n  // TODO 2 : reducer SommeReducer extends Reducer<Text, DoubleWritable, Text, DoubleWritable>\n  //          émet (ville, somme arrondie au centime) ; il servira aussi de combiner : pourquoi est-ce correct ?\n  public static class SommeReducer extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {\n  }\n\n  @Override\n  public int run(String[] args) throws Exception {\n    getConf().setIfUnset(\"mapreduce.output.textoutputformat.separator\", \";\");\n    Job job = Job.getInstance(getConf(), \"ca-par-ville\");\n    job.setJarByClass(CaParVille.class);\n    // TODO 3 : mapper, combiner, reducer, types de sortie, chemins d'entrée et de sortie (args[0], args[1])\n    boolean ok = job.waitForCompletion(true);\n    Resultats.afficher(job);\n    return ok ? 0 : 1;\n  }\n\n  public static void main(String[] args) throws Exception {\n    System.exit(ToolRunner.run(new CaParVille(), args));\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp1/src/fr/orsys/hdd/tp1/CaParVille.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000027_741876404",
+      "id": "20261123-090027_741876404",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.2 Recompiler",
+      "text": "%sh\ncd /tmp/hdd/tp1\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$(hadoop classpath)\" -d classes $(find src -name '*.java') \\\n  && /opt/jdk17/bin/jar cf clients.jar -C classes . \\\n  && echo \"OK : $(ls -l clients.jar)\" && /opt/jdk17/bin/jar tf clients.jar | grep class",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000028_142654667",
+      "id": "20261123-090028_142654667",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.3 Exécuter et contrôler",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/ca_villes\nyarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.CaParVille \\\n     '/data/clean/clients/part-*' /data/out/ca_villes 2>&1 | tee /tmp/hdd/tp1/run_ca.log | grep -E 'HDD_|ERROR|Exception'\necho \"--- top 5 (MapReduce)\"\nhdfs dfs -cat /data/out/ca_villes/part-r-* | sort -t';' -k2,2gr | head -5\necho \"--- contrôle awk\"\nhdfs dfs -cat '/data/clean/clients/part-*' | awk -F';' '{s[$3]+=$4} END {for (v in s) printf \"%s;%.2f\\n\", v, s[v]}' | sort -t';' -k2,2gr | head -5",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000029_479681650",
+      "id": "20261123-090029_479681650",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Bonus",
+      "text": "%md\n### Pour aller plus loin : le même calcul en une ligne de SQL\n\nUne table Hive externe posée sur les fichiers produits par MapReduce rend leur résultat interrogeable en SQL. Et la requête équivalente, sur les données propres, est exécutée par Hive… sous forme de DAG Tez sur YARN.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000030_356866507",
+      "id": "20261123-090030_356866507",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Pour aller plus loin : le même calcul en une ligne de SQL</h3>\n<p>Une table Hive externe posée sur les fichiers produits par MapReduce rend leur résultat interrogeable en SQL. Et la requête équivalente, sur les données propres, est exécutée par Hive… sous forme de DAG Tez sur YARN.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "B.1 Tables Hive externes sur les résultats",
+      "text": "%hive\nCREATE DATABASE IF NOT EXISTS tp1;\nCREATE EXTERNAL TABLE IF NOT EXISTS tp1.ca_villes (ville STRING, ca_total DOUBLE)\nROW FORMAT DELIMITED FIELDS TERMINATED BY ';' LOCATION '/data/out/ca_villes';\nCREATE EXTERNAL TABLE IF NOT EXISTS tp1.clients_propres (\n  id STRING, nom STRING, ville STRING, ca DOUBLE, segment STRING, canal STRING, date_inscription STRING)\nROW FORMAT DELIMITED FIELDS TERMINATED BY ';' LOCATION '/data/clean/clients'\nTBLPROPERTIES ('comment' = 'contient aussi les rejets-m-* : voir la requête');",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000031_67906456",
+      "id": "20261123-090031_067906456",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "B.2 SQL contre MapReduce",
+      "text": "%hive\n-- rejets-m-* : 1er champ = motif, ce n'est pas un identifiant client => filtrés\nSELECT p.ville, ROUND(SUM(p.ca), 2) AS ca_sql, MAX(m.ca_total) AS ca_mapreduce\nFROM tp1.clients_propres p JOIN tp1.ca_villes m ON p.ville = m.ville\nWHERE p.id RLIKE '^C[0-9]{6}$'\nGROUP BY p.ville\nORDER BY ca_sql DESC\nLIMIT 10",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000032_616748007",
+      "id": "20261123-090032_616748007",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Contrôle",
+      "text": "%md\n### Contrôle des critères de réussite",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000033_651603941",
+      "id": "20261123-090033_651603941",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Contrôle des critères de réussite</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle automatique",
+      "text": "%sh\nok () { printf \"  [ OK ] %s\\n\" \"$1\"; }; ko () { printf \"  [ KO ] %s\\n\" \"$1\"; }\ngrep -q 'HDD_ETAT=SUCCEEDED' /tmp/hdd/tp1/run_villes_1r.log 2>/dev/null && ok \"job clients-par-ville SUCCEEDED\" || ko \"job clients-par-ville (étape 4.1)\"\ndiff -q /tmp/hdd/tp1/attendu.txt /tmp/hdd/tp1/obtenu.txt >/dev/null 2>&1 && ok \"totaux par ville = fichiers source\" || ko \"totaux par ville (étape 4.2)\"\nattendu=$(python3 -c \"import json; print(len(json.load(open('/opt/data/hdd/attendus.json'))['clients_par_ville_collecte']))\")\n[ \"$(wc -l < /tmp/hdd/tp1/obtenu.txt 2>/dev/null)\" = \"$attendu\" ] && ok \"$attendu villes après normalisation\" || ko \"nombre de villes ($attendu attendues)\"\nsans=$(grep -o 'reduce_in=[0-9]*' /tmp/hdd/tp1/run_villes_sans.log 2>/dev/null | cut -d= -f2)\navec=$(grep -o 'reduce_in=[0-9]*' /tmp/hdd/tp1/run_villes_avec.log 2>/dev/null | cut -d= -f2)\n[ -n \"$sans\" ] && [ -n \"$avec\" ] && [ \"$avec\" -lt \"$sans\" ] && ok \"Reduce input records : $sans -> $avec avec combiner\" || ko \"comparaison combiner (étape 5.1)\"\n[ \"$(hdfs dfs -ls /data/out/villes_avec 2>/dev/null | grep -c part-r-)\" = 2 ] && ok \"2 fichiers part-r-* avec 2 reducers\" || ko \"2 reducers (étape 5.1)\"\ngrep -q 'HDD_ETAT=SUCCEEDED' /tmp/hdd/tp1/run_ca.log 2>/dev/null && ok \"tâche CaParVille SUCCEEDED\" || ko \"tâche CaParVille (étape 6)\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000034_157680714",
+      "id": "20261123-090034_157680714",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    }
+  ],
+  "name": "TP1 - Collecte clients et taches MapReduce",
+  "id": "2HDD1ENOX",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/1 - Enonces/TP1 - Collecte clients et taches MapReduce"
+}

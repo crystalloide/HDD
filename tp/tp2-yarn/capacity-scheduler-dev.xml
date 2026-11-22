@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TP2 — Capacity Scheduler avec une file « dev » en plus de « default ».
+  Reprend tous les réglages de hadoop/config (section Capacity Scheduler),
+  puis partage le cluster : default 70 %, dev 30 % (jusqu'à 50 % si libre).
+
+  Application à chaud, depuis l'hôte :   bash tp/tp2-yarn/ajouter_file_dev.sh
+  (copie ce fichier dans le ResourceManager puis « yarn rmadmin -refreshQueues »)
+-->
+<configuration>
+  <property><name>yarn.scheduler.capacity.maximum-applications</name><value>10000</value></property>
+  <property><name>yarn.scheduler.capacity.maximum-am-resource-percent</name><value>0.8</value></property>
+  <property><name>yarn.scheduler.capacity.resource-calculator</name><value>org.apache.hadoop.yarn.util.resource.DominantResourceCalculator</value></property>
+  <property><name>yarn.scheduler.capacity.node-locality-delay</name><value>40</value></property>
+  <property><name>yarn.scheduler.capacity.queue-mappings</name><value></value></property>
+  <property><name>yarn.scheduler.capacity.queue-mappings-override.enable</name><value>false</value></property>
+
+  <!-- Les deux files filles de root : leurs capacités doivent totaliser 100 -->
+  <property><name>yarn.scheduler.capacity.root.queues</name><value>default,dev</value></property>
+
+  <!-- File default : 70 % garantis, peut monter à 100 % si dev est inactive -->
+  <property><name>yarn.scheduler.capacity.root.default.capacity</name><value>70</value></property>
+  <property><name>yarn.scheduler.capacity.root.default.maximum-capacity</name><value>100</value></property>
+  <property><name>yarn.scheduler.capacity.root.default.user-limit-factor</name><value>1</value></property>
+  <property><name>yarn.scheduler.capacity.root.default.state</name><value>RUNNING</value></property>
+  <property><name>yarn.scheduler.capacity.root.default.acl_submit_applications</name><value>*</value></property>
+  <property><name>yarn.scheduler.capacity.root.default.acl_administer_queue</name><value>*</value></property>
+
+  <!-- File dev : 30 % garantis, plafonnée à 50 % du cluster.
+       user-limit-factor 2 : un utilisateur seul peut dépasser la capacité
+       garantie (30 % x 2 = 60 %), dans la limite du plafond (50 %). -->
+  <property><name>yarn.scheduler.capacity.root.dev.capacity</name><value>30</value></property>
+  <property><name>yarn.scheduler.capacity.root.dev.maximum-capacity</name><value>50</value></property>
+  <property><name>yarn.scheduler.capacity.root.dev.user-limit-factor</name><value>2</value></property>
+  <property><name>yarn.scheduler.capacity.root.dev.state</name><value>RUNNING</value></property>
+  <property><name>yarn.scheduler.capacity.root.dev.acl_submit_applications</name><value>*</value></property>
+  <property><name>yarn.scheduler.capacity.root.dev.acl_administer_queue</name><value>*</value></property>
+</configuration>

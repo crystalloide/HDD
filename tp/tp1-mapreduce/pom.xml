@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TP1 — Collecte clients et tâches MapReduce
+  Construction avec Maven (poste du formateur ou IDE, accès Internet requis) :
+      mvn -q package        ->  target/clients.jar
+  Dans le lab, les notebooks Zeppelin compilent directement avec javac (sans
+  Maven ni Internet) : même résultat. Les dépendances sont en « provided » :
+  elles sont fournies par le cluster au moment de l'exécution.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.orsys.hdd</groupId>
+  <artifactId>clients</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Mêmes versions que le cluster du lab -->
+    <hadoop.version>3.4.2</hadoop.version>
+    <hbase.version>2.6.7</hbase.version>
+    <pig.version>0.18.0</pig.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <version>${hadoop.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>clients</finalName>
+  </build>
+</project>

@@ -1,0 +1,470 @@
+{
+  "paragraphs": [
+    {
+      "title": "À lire avant de commencer",
+      "text": "%md\n## Prise en main de l'environnement des hand-labs — formation HDD « Hadoop, développement »\n\nTout le cluster tourne sur votre poste, un conteneur Docker par rôle. Ce notebook vérifie l'environnement puis rejoue la **démonstration du chapitre 1** : déposer un fichier dans HDFS, lancer un job MapReduce sur YARN, suivre son exécution dans les consoles.\n\n| Console | Adresse (depuis votre navigateur) | Rôle |\n|---|---|---|\n| NameNode (HDFS) | http://localhost:9870 | état du système de fichiers, *Utilities > Browse the file system* |\n| DataNode | http://localhost:9864 | blocs stockés sur le nœud |\n| ResourceManager (YARN) | http://localhost:8088 | applications en cours, files, conteneurs |\n| NodeManager | http://localhost:8042 | conteneurs du nœud |\n| JobHistory (MapReduce) | http://localhost:19888 | jobs terminés : compteurs, tâches, journaux |\n| Zeppelin | http://localhost:8082 | ces notebooks |\n| Hue | http://localhost:8888 (`hue` / `hue`) | éditeurs Hive et Impala, fichiers, HBase |\n| Spark Master / History | http://localhost:8080 / http://localhost:18080 | applications Spark |\n| HBase Master | http://localhost:16010 | tables, régions |\n| Impala | http://localhost:25000 | requêtes Impala |\n\nLes notebooks des TP sont dans **HDD / 1 - Enonces** (à compléter) et **HDD / 2 - Corriges**.\nLes sources des TP sont montées en lecture seule dans `/opt/tp`, les données dans `/opt/data/hdd`. On travaille dans `/tmp/hdd` (conteneur Zeppelin).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_792223405",
+      "id": "20261123-090001_792223405",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>Prise en main de l'environnement des hand-labs — formation HDD « Hadoop, développement »</h2>\n<p>Tout le cluster tourne sur votre poste, un conteneur Docker par rôle. Ce notebook vérifie l'environnement puis rejoue la <strong>démonstration du chapitre 1</strong> : déposer un fichier dans HDFS, lancer un job MapReduce sur YARN, suivre son exécution dans les consoles.</p>\n<table>\n<thead>\n<tr>\n<th>Console</th>\n<th>Adresse (depuis votre navigateur)</th>\n<th>Rôle</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>NameNode (HDFS)</td>\n<td>http://localhost:9870</td>\n<td>état du système de fichiers, <em>Utilities &gt; Browse the file system</em></td>\n</tr>\n<tr>\n<td>DataNode</td>\n<td>http://localhost:9864</td>\n<td>blocs stockés sur le nœud</td>\n</tr>\n<tr>\n<td>ResourceManager (YARN)</td>\n<td>http://localhost:8088</td>\n<td>applications en cours, files, conteneurs</td>\n</tr>\n<tr>\n<td>NodeManager</td>\n<td>http://localhost:8042</td>\n<td>conteneurs du nœud</td>\n</tr>\n<tr>\n<td>JobHistory (MapReduce)</td>\n<td>http://localhost:19888</td>\n<td>jobs terminés : compteurs, tâches, journaux</td>\n</tr>\n<tr>\n<td>Zeppelin</td>\n<td>http://localhost:8082</td>\n<td>ces notebooks</td>\n</tr>\n<tr>\n<td>Hue</td>\n<td>http://localhost:8888 (<code>hue</code> / <code>hue</code>)</td>\n<td>éditeurs Hive et Impala, fichiers, HBase</td>\n</tr>\n<tr>\n<td>Spark Master / History</td>\n<td>http://localhost:8080 / http://localhost:18080</td>\n<td>applications Spark</td>\n</tr>\n<tr>\n<td>HBase Master</td>\n<td>http://localhost:16010</td>\n<td>tables, régions</td>\n</tr>\n<tr>\n<td>Impala</td>\n<td>http://localhost:25000</td>\n<td>requêtes Impala</td>\n</tr>\n</tbody>\n</table>\n<p>Les notebooks des TP sont dans <strong>HDD / 1 - Enonces</strong> (à compléter) et <strong>HDD / 2 - Corriges</strong>.\nLes sources des TP sont montées en lecture seule dans <code>/opt/tp</code>, les données dans <code>/opt/data/hdd</code>. On travaille dans <code>/tmp/hdd</code> (conteneur Zeppelin).</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1. HDFS répond",
+      "text": "%sh\n# Qui suis-je pour HDFS ? Zeppelin tourne sous « root » : c'est l'identité\n# présentée au NameNode (authentification « simple », sans Kerberos).\nwhoami\nhdfs dfs -ls /\necho \"--- répertoires personnels\"\nhdfs dfs -ls /user",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_826718029",
+      "id": "20261123-090002_826718029",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2. Capacité HDFS (superutilisateur)",
+      "text": "%sh\n# Rapport du cluster : réservé au superutilisateur HDFS (le compte « hadoop »\n# qui fait tourner le NameNode). En authentification simple, HDFS croit la\n# variable HADOOP_USER_NAME : c'est pratique en TP, et c'est exactement\n# pourquoi un cluster de production active Kerberos.\nHADOOP_USER_NAME=hadoop hdfs dfsadmin -report | head -25",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_820312977",
+      "id": "20261123-090003_820312977",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3. YARN : nœuds, files, capacité",
+      "text": "%sh\nyarn node -list -showDetails 2>/dev/null | head -20\necho \"--- files du Capacity Scheduler\"\nmapred queue -list 2>/dev/null | grep -E 'Queue Name|Queue State|Scheduling Info' | head -12\necho \"--- métriques du cluster (API REST du ResourceManager)\"\ncurl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c \"import json,sys; m=json.load(sys.stdin)['clusterMetrics']; print('mémoire YARN :', m['totalMB'], 'Mo | vcores :', m['totalVirtualCores'], '| nœuds actifs :', m['activeNodes'])\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_147162809",
+      "id": "20261123-090004_147162809",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Démonstration",
+      "text": "%md\n### Démonstration du chapitre 1 : usage d'Hadoop\n\n1. déposer un fichier dans HDFS (NameNode, port 9870) ;\n2. lancer l'exemple **wordcount** livré avec Hadoop : un vrai job MapReduce soumis à YARN (port 8088) ;\n3. lire le résultat, puis retrouver le job terminé dans le **JobHistory** (port 19888) : compteurs, tâches map et reduce, journaux.\n\nPendant l'exécution, ouvrez http://localhost:8088 : l'application passe par les états ACCEPTED puis RUNNING, avec un conteneur pour l'ApplicationMaster et un par tâche.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_513213114",
+      "id": "20261123-090005_513213114",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Démonstration du chapitre 1 : usage d'Hadoop</h3>\n<ol>\n<li>déposer un fichier dans HDFS (NameNode, port 9870) ;</li>\n<li>lancer l'exemple <strong>wordcount</strong> livré avec Hadoop : un vrai job MapReduce soumis à YARN (port 8088) ;</li>\n<li>lire le résultat, puis retrouver le job terminé dans le <strong>JobHistory</strong> (port 19888) : compteurs, tâches map et reduce, journaux.</li>\n</ol>\n<p>Pendant l'exécution, ouvrez http://localhost:8088 : l'application passe par les états ACCEPTED puis RUNNING, avec un conteneur pour l'ApplicationMaster et un par tâche.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4. Déposer un fichier dans HDFS",
+      "text": "%sh\nhdfs dfs -mkdir -p /demo/in\nhdfs dfs -put -f /opt/hadoop/LICENSE.txt /demo/in/\nhdfs dfs -ls /demo/in",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_287083877",
+      "id": "20261123-090006_287083877",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5. Lancer wordcount sur YARN",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /demo/out\nyarn jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar \\\n     wordcount /demo/in /demo/out 2>&1 | grep -E 'Running job|Submitted application|map [0-9]+% reduce|completed successfully|Map input records|Reduce output records|failed'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_42844389",
+      "id": "20261123-090007_042844389",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6. Lire le résultat",
+      "text": "%sh\nhdfs dfs -ls /demo/out\necho \"--- les 15 mots les plus fréquents\"\nhdfs dfs -cat /demo/out/part-r-00000 | sort -t$'\\t' -k2,2nr | head -15",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_781074974",
+      "id": "20261123-090008_781074974",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "7. Le job dans le JobHistory",
+      "text": "%sh\n# Les jobs terminés sont connus du JobHistory Server (http://localhost:19888)\ncurl -s \"http://historyserver:19888/ws/v1/history/mapreduce/jobs\" | python3 -c \"\nimport json, sys, datetime\njobs = (json.load(sys.stdin).get('jobs') or {}).get('job', [])\nfor j in sorted(jobs, key=lambda j: j['startTime'])[-5:]:\n    debut = datetime.datetime.fromtimestamp(j['startTime'] / 1000).strftime('%H:%M:%S')\n    print(f\\\"{j['id']}  {j['name'][:28]:28}  {j['user']:10} {j['queue']:8} {j['state']:10} début {debut}  maps={j['mapsTotal']} reduces={j['reducesTotal']}\\\")\n\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_150504804",
+      "id": "20261123-090009_150504804",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Comptes",
+      "text": "%md\n### Comptes et groupes du lab\n\nL'authentification est « simple » : HDFS croit l'identité annoncée par le client. Les comptes de test et leurs groupes sont déclarés dans `hadoop/config` (propriété `hadoop.user.group.static.mapping.overrides`) :\n\n| Compte | Groupe | Rôle dans les TP |\n|---|---|---|\n| `hadoop` | *(superutilisateur)* | administration HDFS : quotas, instantanés, `chown` |\n| `crm_admin`, `alice` | `crm` | propriétaires du référentiel client (TP4, TP5) |\n| `bob` | `marketing` | lecteur autorisé par ACL |\n| `eve` | `stagiaires` | hors groupe : doit être refusée |\n| `root`, `hive`, `impala`, `hue` | — | comptes de service de Zeppelin/Spark, HiveServer2, Impala, Hue |\n\nLes permissions HDFS sont **actives**, avec un masque de création `000` : tout ce qui est créé sans restriction explicite reste ouvert aux autres moteurs, seuls les répertoires protégés volontairement le sont.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_656789824",
+      "id": "20261123-090010_656789824",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Comptes et groupes du lab</h3>\n<p>L'authentification est « simple » : HDFS croit l'identité annoncée par le client. Les comptes de test et leurs groupes sont déclarés dans <code>hadoop/config</code> (propriété <code>hadoop.user.group.static.mapping.overrides</code>) :</p>\n<table>\n<thead>\n<tr>\n<th>Compte</th>\n<th>Groupe</th>\n<th>Rôle dans les TP</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>hadoop</code></td>\n<td><em>(superutilisateur)</em></td>\n<td>administration HDFS : quotas, instantanés, <code>chown</code></td>\n</tr>\n<tr>\n<td><code>crm_admin</code>, <code>alice</code></td>\n<td><code>crm</code></td>\n<td>propriétaires du référentiel client (TP4, TP5)</td>\n</tr>\n<tr>\n<td><code>bob</code></td>\n<td><code>marketing</code></td>\n<td>lecteur autorisé par ACL</td>\n</tr>\n<tr>\n<td><code>eve</code></td>\n<td><code>stagiaires</code></td>\n<td>hors groupe : doit être refusée</td>\n</tr>\n<tr>\n<td><code>root</code>, <code>hive</code>, <code>impala</code>, <code>hue</code></td>\n<td>—</td>\n<td>comptes de service de Zeppelin/Spark, HiveServer2, Impala, Hue</td>\n</tr>\n</tbody>\n</table>\n<p>Les permissions HDFS sont <strong>actives</strong>, avec un masque de création <code>000</code> : tout ce qui est créé sans restriction explicite reste ouvert aux autres moteurs, seuls les répertoires protégés volontairement le sont.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "8. Groupes vus par le NameNode",
+      "text": "%sh\nhdfs groups crm_admin alice bob eve root",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_429682366",
+      "id": "20261123-090011_429682366",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Suite",
+      "text": "%md\n### Et ensuite ?\n\n* Vérification complète de l'écosystème (Hive, Spark, Impala, HBase sur la même table) : notebook **HDD / 0 - Demarrage / Demo ecosysteme**.\n* Depuis l'hôte : `bash scripts/check_stack.sh --complet`.\n* Les TP : **TP1** collecte et MapReduce, **TP2** YARN, **TP3** HBase, **TP4** référentiel avec Pig et Hive, **TP5** référentiel avec Spark.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_931506605",
+      "id": "20261123-090012_931506605",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Et ensuite ?</h3>\n<ul>\n<li>Vérification complète de l'écosystème (Hive, Spark, Impala, HBase sur la même table) : notebook <strong>HDD / 0 - Demarrage / Demo ecosysteme</strong>.</li>\n<li>Depuis l'hôte : <code>bash scripts/check_stack.sh --complet</code>.</li>\n<li>Les TP : <strong>TP1</strong> collecte et MapReduce, <strong>TP2</strong> YARN, <strong>TP3</strong> HBase, <strong>TP4</strong> référentiel avec Pig et Hive, <strong>TP5</strong> référentiel avec Spark.</li>\n</ul>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    }
+  ],
+  "name": "00 - Prise en main et demonstration Hadoop",
+  "id": "2HDD00DEM",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/0 - Demarrage/00 - Prise en main et demonstration Hadoop"
+}

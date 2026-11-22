@@ -1,0 +1,1012 @@
+{
+  "paragraphs": [
+    {
+      "title": "Présentation du TP",
+      "text": "%md\n## TP2 — Configuration de l'implémentation YARN\n\n**Objectif** : comprendre et ajuster les ressources YARN, puis isoler des traitements dans une file dédiée.\n\n| Étape | Contenu |\n|---|---|\n| 1. Observer | capacité du cluster, nœuds, files (ResourceManager, port 8088) |\n| 2. Mesurer | relancer le job du TP1, noter conteneurs simultanés et durée, pour deux tailles de map |\n| 3. Ajuster | changer la mémoire annoncée par le NodeManager (`yarn.nodemanager.resource.memory-mb`) |\n| 4. Appliquer | recréer le NodeManager, relancer, comparer |\n| 5. Partager | créer une file `dev` dans le Capacity Scheduler, `yarn rmadmin -refreshQueues` |\n| 6. Vérifier | soumettre avec `-D mapreduce.job.queuename=dev`, contrôler la file et la part du cluster |\n\n**Critères de réussite** : vous expliquez le lien entre mémoire du nœud et nombre de conteneurs ; le job s'exécute dans la file `dev` ; aucun conteneur n'est tué pour dépassement mémoire.\n\nCertaines actions se font **depuis un terminal de l'hôte**, à la racine du dépôt (elles agissent sur les conteneurs) : elles sont signalées 🖥️.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_700994217",
+      "id": "20261123-090001_700994217",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>TP2 — Configuration de l'implémentation YARN</h2>\n<p><strong>Objectif</strong> : comprendre et ajuster les ressources YARN, puis isoler des traitements dans une file dédiée.</p>\n<table>\n<thead>\n<tr>\n<th>Étape</th>\n<th>Contenu</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1. Observer</td>\n<td>capacité du cluster, nœuds, files (ResourceManager, port 8088)</td>\n</tr>\n<tr>\n<td>2. Mesurer</td>\n<td>relancer le job du TP1, noter conteneurs simultanés et durée, pour deux tailles de map</td>\n</tr>\n<tr>\n<td>3. Ajuster</td>\n<td>changer la mémoire annoncée par le NodeManager (<code>yarn.nodemanager.resource.memory-mb</code>)</td>\n</tr>\n<tr>\n<td>4. Appliquer</td>\n<td>recréer le NodeManager, relancer, comparer</td>\n</tr>\n<tr>\n<td>5. Partager</td>\n<td>créer une file <code>dev</code> dans le Capacity Scheduler, <code>yarn rmadmin -refreshQueues</code></td>\n</tr>\n<tr>\n<td>6. Vérifier</td>\n<td>soumettre avec <code>-D mapreduce.job.queuename=dev</code>, contrôler la file et la part du cluster</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Critères de réussite</strong> : vous expliquez le lien entre mémoire du nœud et nombre de conteneurs ; le job s'exécute dans la file <code>dev</code> ; aucun conteneur n'est tué pour dépassement mémoire.</p>\n<p>Certaines actions se font <strong>depuis un terminal de l'hôte</strong>, à la racine du dépôt (elles agissent sur les conteneurs) : elles sont signalées 🖥️.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "0.1 Préparer le jar et les données",
+      "text": "%sh\n# Construit le jar du TP1 à partir de la solution de référence (/opt/tp) :\n# ce TP ne dépend pas de l'état de votre TP1.\nmkdir -p /tmp/hdd/tp2 && cd /tmp/hdd/tp2\nrm -rf classes && mkdir classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$(hadoop classpath)\" -d classes \\\n    $(find /opt/tp/tp1-mapreduce/src -name '*.java') && /opt/jdk17/bin/jar cf clients.jar -C classes .\nls -l clients.jar\n# Données propres du TP1 (relance la collecte si besoin)\nif ! hdfs dfs -test -e /data/clean/clients/_SUCCESS; then\n  hdfs dfs -mkdir -p /data/raw/clients && hdfs dfs -put -f /opt/data/hdd/clients/*.csv /data/raw/clients/\n  hdfs dfs -rm -r -f -skipTrash /data/clean/clients\n  yarn jar clients.jar fr.orsys.hdd.tp1.CollecteClients /data/raw/clients /data/clean/clients 2>&1 | grep -E 'HDD_ETAT|COLLECTE'\nfi\nhdfs dfs -du -s -h /data/clean/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_938930627",
+      "id": "20261123-090002_938930627",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "0.2 Outil de mesure",
+      "text": "%sh\n# Fonction de lancement réutilisée par les étapes suivantes :\n#   lancer <libellé> [-D ...]   -> soumet ClientsParVille, affiche les mesures du JobHistory\ncat > /tmp/hdd/tp2/lancer.sh <<'EOF'\n#!/bin/bash\nlib=\"$1\"; shift\nsortie=\"/data/out/yarn_${lib}\"\nhdfs dfs -rm -r -f -skipTrash \"$sortie\" > /dev/null\ndebut=$(date +%s)\nyarn jar /tmp/hdd/tp2/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n     -D mapreduce.input.fileinputformat.split.maxsize=131072 \\\n     -D hdd.map.pause.ms=4000 \\\n     \"$@\" '/data/clean/clients/part-*' \"$sortie\" > \"/tmp/hdd/tp2/${lib}.log\" 2>&1\njob=$(grep -o 'HDD_JOB_ID=job_[0-9_]*' \"/tmp/hdd/tp2/${lib}.log\" | cut -d= -f2)\necho \"durée vue du client : $(( $(date +%s) - debut )) s  —  $(grep HDD_ETAT /tmp/hdd/tp2/${lib}.log)\"\nif [ -n \"$job\" ]; then\n  python3 /opt/tp/tp2-yarn/mesurer_job.py \"$job\" \"$lib\" | tee \"/tmp/hdd/tp2/${lib}.mesure\"\nelse\n  tail -20 \"/tmp/hdd/tp2/${lib}.log\"\nfi\nEOF\nchmod +x /tmp/hdd/tp2/lancer.sh && echo \"lancer.sh prêt\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_681483938",
+      "id": "20261123-090003_681483938",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 1",
+      "text": "%md\n### Étape 1 — Observer\n\nOuvrez http://localhost:8088 : *Cluster Metrics* (mémoire et vcores totaux), *Nodes*, *Scheduler*. Puis comparez avec la ligne de commande et l'API REST ci-dessous.\n\nRappel de la configuration du lab (`hadoop/config`, `spark/hadoop-conf/mapred-site.xml`) :\n\n| Paramètre | Valeur | Rôle |\n|---|---|---|\n| `yarn.nodemanager.resource.memory-mb` | 4096 (3072 en version légère) | mémoire que le nœud offre aux conteneurs |\n| `yarn.nodemanager.resource.cpu-vcores` | 8 (4 en version légère) | vcores offerts |\n| `yarn.scheduler.minimum-allocation-mb` / `maximum-allocation-mb` | 256 / 4096 | plus petit et plus grand conteneur accordés |\n| `yarn.app.mapreduce.am.resource.mb` | 512 | ApplicationMaster MapReduce |\n| `mapreduce.map.memory.mb` / `mapreduce.map.java.opts` | 512 / `-Xmx410m` | conteneur map et tas Java (≈ 80 %) |\n| `yarn.scheduler.capacity.resource-calculator` | `DominantResourceCalculator` | mémoire **et** vcores sont comptés |",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_976463384",
+      "id": "20261123-090004_976463384",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 1 — Observer</h3>\n<p>Ouvrez http://localhost:8088 : <em>Cluster Metrics</em> (mémoire et vcores totaux), <em>Nodes</em>, <em>Scheduler</em>. Puis comparez avec la ligne de commande et l'API REST ci-dessous.</p>\n<p>Rappel de la configuration du lab (<code>hadoop/config</code>, <code>spark/hadoop-conf/mapred-site.xml</code>) :</p>\n<table>\n<thead>\n<tr>\n<th>Paramètre</th>\n<th>Valeur</th>\n<th>Rôle</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><code>yarn.nodemanager.resource.memory-mb</code></td>\n<td>4096 (3072 en version légère)</td>\n<td>mémoire que le nœud offre aux conteneurs</td>\n</tr>\n<tr>\n<td><code>yarn.nodemanager.resource.cpu-vcores</code></td>\n<td>8 (4 en version légère)</td>\n<td>vcores offerts</td>\n</tr>\n<tr>\n<td><code>yarn.scheduler.minimum-allocation-mb</code> / <code>maximum-allocation-mb</code></td>\n<td>256 / 4096</td>\n<td>plus petit et plus grand conteneur accordés</td>\n</tr>\n<tr>\n<td><code>yarn.app.mapreduce.am.resource.mb</code></td>\n<td>512</td>\n<td>ApplicationMaster MapReduce</td>\n</tr>\n<tr>\n<td><code>mapreduce.map.memory.mb</code> / <code>mapreduce.map.java.opts</code></td>\n<td>512 / <code>-Xmx410m</code></td>\n<td>conteneur map et tas Java (≈ 80 %)</td>\n</tr>\n<tr>\n<td><code>yarn.scheduler.capacity.resource-calculator</code></td>\n<td><code>DominantResourceCalculator</code></td>\n<td>mémoire <strong>et</strong> vcores sont comptés</td>\n</tr>\n</tbody>\n</table>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1.1 Capacité du cluster",
+      "text": "%sh\nyarn node -list -showDetails 2>/dev/null | grep -E 'Node-Id|Total-Nodes|Configured Resources|Allocated Resources|Resource Utilization'\ncurl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c \"\nimport json, sys; m = json.load(sys.stdin)['clusterMetrics']\nprint(f\\\"mémoire : {m['totalMB']} Mo au total, {m['availableMB']} Mo libres | vcores : {m['totalVirtualCores']} | nœuds actifs : {m['activeNodes']} | applications en cours : {m['appsRunning']}\\\")\"\nyarn queue -status default 2>/dev/null | grep -E 'Queue Name|State|Capacity'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_57057247",
+      "id": "20261123-090005_057057247",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 2",
+      "text": "%md\n### Étape 2 — Mesurer\n\nLe job `ClientsParVille` du TP1 est découpé en une vingtaine de maps (`split.maxsize` = 128 Ko) ; chaque map marque une pause de 4 s au démarrage (`hdd.map.pause.ms`), le temps d'observer les conteneurs.\n\n1. Lancez la mesure **A** (maps de 512 Mo) ; pendant qu'elle tourne, lancez le paragraphe **2.3 Observer** et regardez http://localhost:8088.\n2. Lancez la mesure **B** (maps de 1024 Mo, tas à 80 %).\n\nNotez pour chacune : conteneurs simultanés, maps simultanés, durée.\n\nAvant de mesurer, fermez les sessions Tez laissées ouvertes par Hue ou `%hive` : elles occupent des conteneurs (`yarn application -list`, puis `yarn application -kill <id>`).\n\n| Mesure | Map | NodeManager | Maps simultanés | Durée |\n|---|---|---|---|---|\n| A | 512 Mo | 4096 Mo | … | … |\n| B | 1024 Mo | 4096 Mo | … | … |\n| C | 512 Mo | 2048 Mo | … | … |",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_40600804",
+      "id": "20261123-090006_040600804",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 2 — Mesurer</h3>\n<p>Le job <code>ClientsParVille</code> du TP1 est découpé en une vingtaine de maps (<code>split.maxsize</code> = 128 Ko) ; chaque map marque une pause de 4 s au démarrage (<code>hdd.map.pause.ms</code>), le temps d'observer les conteneurs.</p>\n<ol>\n<li>Lancez la mesure <strong>A</strong> (maps de 512 Mo) ; pendant qu'elle tourne, lancez le paragraphe <strong>2.3 Observer</strong> et regardez http://localhost:8088.</li>\n<li>Lancez la mesure <strong>B</strong> (maps de 1024 Mo, tas à 80 %).</li>\n</ol>\n<p>Notez pour chacune : conteneurs simultanés, maps simultanés, durée.</p>\n<p>Avant de mesurer, fermez les sessions Tez laissées ouvertes par Hue ou <code>%hive</code> : elles occupent des conteneurs (<code>yarn application -list</code>, puis <code>yarn application -kill &lt;id&gt;</code>).</p>\n<table>\n<thead>\n<tr>\n<th>Mesure</th>\n<th>Map</th>\n<th>NodeManager</th>\n<th>Maps simultanés</th>\n<th>Durée</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>A</td>\n<td>512 Mo</td>\n<td>4096 Mo</td>\n<td>…</td>\n<td>…</td>\n</tr>\n<tr>\n<td>B</td>\n<td>1024 Mo</td>\n<td>4096 Mo</td>\n<td>…</td>\n<td>…</td>\n</tr>\n<tr>\n<td>C</td>\n<td>512 Mo</td>\n<td>2048 Mo</td>\n<td>…</td>\n<td>…</td>\n</tr>\n</tbody>\n</table>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "2.1 Mesure A : maps de 512 Mo",
+      "text": "%sh\n/tmp/hdd/tp2/lancer.sh A_map512",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_144191375",
+      "id": "20261123-090007_144191375",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.2 Mesure B : maps de 1024 Mo",
+      "text": "%sh\n# TODO : relancer la mesure avec des conteneurs map de 1024 Mo et un tas Java d'environ 80 % de cette taille\n#        (options -D mapreduce.map.memory.mb=... et -D mapreduce.map.java.opts=-Xmx...m)\n/tmp/hdd/tp2/lancer.sh B_map1024",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_696154397",
+      "id": "20261123-090008_696154397",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.3 Observer pendant l'exécution (à lancer pendant 2.1 ou 2.2)",
+      "text": "%sh\n# À lancer PENDANT qu'un job tourne (Zeppelin exécute les paragraphes %sh en parallèle) :\n# toutes les 5 s, mémoire et conteneurs alloués par YARN.\nfor i in $(seq 1 12); do\n  curl -s \"http://resourcemanager:8088/ws/v1/cluster/apps?states=RUNNING\" | python3 -c \"\nimport json, sys\napps = (json.load(sys.stdin).get('apps') or {}).get('app', [])\nfor a in apps:\n    print(f\\\"{a['id']}  {a['name'][:22]:22} file={a['queue']:8} conteneurs={a['runningContainers']:2}  mémoire={a['allocatedMB']:5} Mo  vcores={a['allocatedVCores']}\\\")\nif not apps: print('(aucune application en cours)')\n\"\n  sleep 5\ndone",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_686979310",
+      "id": "20261123-090009_686979310",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Questions",
+      "text": "%md\n**Questions**\n\n1. Combien de maps tournent en même temps en A ? en B ? Retrouvez ces nombres par le calcul.\n2. Quelle ressource limite le parallélisme en A : la mémoire ou les vcores ?\n3. Pourquoi la durée totale augmente-t-elle en B alors que chaque map dispose de plus de mémoire ?",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_42893315",
+      "id": "20261123-090010_042893315",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong></p>\n<ol>\n<li>Combien de maps tournent en même temps en A ? en B ? Retrouvez ces nombres par le calcul.</li>\n<li>Quelle ressource limite le parallélisme en A : la mémoire ou les vcores ?</li>\n<li>Pourquoi la durée totale augmente-t-elle en B alors que chaque map dispose de plus de mémoire ?</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 3",
+      "text": "%md\n### Étape 3 — Ajuster la capacité du NodeManager 🖥️\n\nLa capacité annoncée par le NodeManager est lue **au démarrage** du conteneur : elle est injectée par Docker Compose (variable `NM_MEMORY_MB`, valeur par défaut 4096). Depuis un terminal de l'hôte, à la racine du dépôt :\n\n```bash\nNM_MEMORY_MB=2048 docker compose --profile full up -d nodemanager\n# version légère : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml --profile full up -d nodemanager\n```\n\n`docker compose restart` ne suffirait pas : il redémarre le même conteneur, avec l'ancienne configuration. `up -d` **recrée** le conteneur avec la nouvelle valeur. Les applications YARN en cours sur ce nœud (sessions Tez de Hue ou Zeppelin) sont interrompues.\n\nAttendez une trentaine de secondes, puis vérifiez la nouvelle capacité.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_837877453",
+      "id": "20261123-090011_837877453",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 3 — Ajuster la capacité du NodeManager 🖥️</h3>\n<p>La capacité annoncée par le NodeManager est lue <strong>au démarrage</strong> du conteneur : elle est injectée par Docker Compose (variable <code>NM_MEMORY_MB</code>, valeur par défaut 4096). Depuis un terminal de l'hôte, à la racine du dépôt :</p>\n<pre><code class=\"language-bash\">NM_MEMORY_MB=2048 docker compose --profile full up -d nodemanager\n# version légère : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml --profile full up -d nodemanager\n</code></pre>\n<p><code>docker compose restart</code> ne suffirait pas : il redémarre le même conteneur, avec l'ancienne configuration. <code>up -d</code> <strong>recrée</strong> le conteneur avec la nouvelle valeur. Les applications YARN en cours sur ce nœud (sessions Tez de Hue ou Zeppelin) sont interrompues.</p>\n<p>Attendez une trentaine de secondes, puis vérifiez la nouvelle capacité.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "3.1 Vérifier la nouvelle capacité",
+      "text": "%sh\ncurl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c \"\nimport json, sys; m = json.load(sys.stdin)['clusterMetrics']\nprint(f\\\"mémoire totale : {m['totalMB']} Mo | vcores : {m['totalVirtualCores']} | nœuds actifs : {m['activeNodes']}\\\")\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_514122705",
+      "id": "20261123-090012_514122705",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 4",
+      "text": "%md\n### Étape 4 — Appliquer et comparer\n\nRelancez la mesure A avec le NodeManager à 2048 Mo (mesure C), puis comparez.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000013_256105269",
+      "id": "20261123-090013_256105269",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 4 — Appliquer et comparer</h3>\n<p>Relancez la mesure A avec le NodeManager à 2048 Mo (mesure C), puis comparez.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4.1 Mesure C : maps de 512 Mo, NodeManager à 2048 Mo",
+      "text": "%sh\n/tmp/hdd/tp2/lancer.sh C_nm2048",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000014_564257572",
+      "id": "20261123-090014_564257572",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.2 Tableau comparatif",
+      "text": "%sh\necho \"Mesure            maps simultanés   durée\"\nfor f in /tmp/hdd/tp2/*.mesure; do\n  printf \"%-18s %8s %16s\\n\" \"$(basename \"$f\" .mesure)\" \\\n    \"$(grep 'maps simultanés' \"$f\" | grep -o '[0-9]*' | head -1)\" \\\n    \"$(grep 'durée  ' \"$f\" | grep -o '[0-9.]* s')\"\ndone",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000015_438956807",
+      "id": "20261123-090015_438956807",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 5",
+      "text": "%md\n🖥️ **Remettre la capacité d'origine** avant la suite (depuis l'hôte) :\n\n```bash\ndocker compose --profile full up -d nodemanager\n```\n\nC : (2048 − 512) / 512 = 3 maps simultanés : la mémoire du nœud borne le nombre de conteneurs.\n\n### Étape 5 — Partager : une file `dev` 🖥️\n\nLe Capacity Scheduler répartit le cluster entre des files. Le fichier `tp/tp2-yarn/capacity-scheduler-dev.xml` reprend la configuration du lab et ajoute une file `dev` : 30 % garantis, plafonnée à 50 % ; `default` passe à 70 %.\n\nLisez le fichier (paragraphe suivant), puis appliquez-le **à chaud** depuis l'hôte :\n\n```bash\nbash tp/tp2-yarn/ajouter_file_dev.sh\n```\n\nLe script copie le fichier dans le conteneur `resourcemanager` puis lance `yarn rmadmin -refreshQueues` : les files sont relues sans redémarrage.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000016_886277935",
+      "id": "20261123-090016_886277935",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>🖥️ <strong>Remettre la capacité d'origine</strong> avant la suite (depuis l'hôte) :</p>\n<pre><code class=\"language-bash\">docker compose --profile full up -d nodemanager\n</code></pre>\n<p>C : (2048 − 512) / 512 = 3 maps simultanés : la mémoire du nœud borne le nombre de conteneurs.</p>\n<h3>Étape 5 — Partager : une file <code>dev</code> 🖥️</h3>\n<p>Le Capacity Scheduler répartit le cluster entre des files. Le fichier <code>tp/tp2-yarn/capacity-scheduler-dev.xml</code> reprend la configuration du lab et ajoute une file <code>dev</code> : 30 % garantis, plafonnée à 50 % ; <code>default</code> passe à 70 %.</p>\n<p>Lisez le fichier (paragraphe suivant), puis appliquez-le <strong>à chaud</strong> depuis l'hôte :</p>\n<pre><code class=\"language-bash\">bash tp/tp2-yarn/ajouter_file_dev.sh\n</code></pre>\n<p>Le script copie le fichier dans le conteneur <code>resourcemanager</code> puis lance <code>yarn rmadmin -refreshQueues</code> : les files sont relues sans redémarrage.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.1 Lire la configuration des files",
+      "text": "%sh\ngrep -E '<name>|<value>' /opt/tp/tp2-yarn/capacity-scheduler-dev.xml | sed -e 's/<property><name>//' -e 's#</name><value># = #' -e 's#</value></property>##' | grep 'root\\.'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000017_470397759",
+      "id": "20261123-090017_470397759",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.2 Vérifier les files depuis Zeppelin",
+      "text": "%sh\nmapred queue -list 2>/dev/null | grep -E 'Queue Name|Queue State|Scheduling Info'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000018_526495913",
+      "id": "20261123-090018_526495913",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 6",
+      "text": "%md\n### Étape 6 — Vérifier\n\nSoumettez le job dans la file `dev`, puis contrôlez la file utilisée (mesure, page *Scheduler* du ResourceManager). Avec 50 % du cluster au plus (2048 Mo), combien de maps simultanés attendez-vous ?",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000019_461694059",
+      "id": "20261123-090019_461694059",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 6 — Vérifier</h3>\n<p>Soumettez le job dans la file <code>dev</code>, puis contrôlez la file utilisée (mesure, page <em>Scheduler</em> du ResourceManager). Avec 50 % du cluster au plus (2048 Mo), combien de maps simultanés attendez-vous ?</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "6.1 Soumettre dans la file dev",
+      "text": "%sh\n# TODO : relancer la mesure en choisissant la file « dev » (propriété mapreduce.job.queuename)\n/tmp/hdd/tp2/lancer.sh D_file_dev",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000020_390157988",
+      "id": "20261123-090020_390157988",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.2 Applications terminées et leur file",
+      "text": "%sh\nyarn application -list -appStates FINISHED 2>/dev/null | grep -E 'clients-par-ville' | awk '{print $1, $4, $5, $6, $7}' | tail -5",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000021_989784658",
+      "id": "20261123-090021_989784658",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Bonus",
+      "text": "%md\n### Pour aller plus loin\n\n1. **Conteneur trop gros** : demandez des maps de 5000 Mo (`-D mapreduce.map.memory.mb=5000`). Que répond YARN ? Quelle propriété fixe cette limite ?\n2. **Tas trop grand pour son conteneur** : `-D mapreduce.map.memory.mb=512 -D mapreduce.map.java.opts=-Xmx2g`. Dans ce lab, le contrôle de mémoire physique du NodeManager est désactivé (`yarn.nodemanager.pmem-check-enabled=false`) : en production, quel serait le risque ?\n3. **Journaux agrégés** : `yarn logs -applicationId <id> | head` sur un job terminé.\n4. **Rendre la file permanente** : bloc « TP2 » en fin de `hadoop/config`.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000022_434232555",
+      "id": "20261123-090022_434232555",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Pour aller plus loin</h3>\n<ol>\n<li><strong>Conteneur trop gros</strong> : demandez des maps de 5000 Mo (<code>-D mapreduce.map.memory.mb=5000</code>). Que répond YARN ? Quelle propriété fixe cette limite ?</li>\n<li><strong>Tas trop grand pour son conteneur</strong> : <code>-D mapreduce.map.memory.mb=512 -D mapreduce.map.java.opts=-Xmx2g</code>. Dans ce lab, le contrôle de mémoire physique du NodeManager est désactivé (<code>yarn.nodemanager.pmem-check-enabled=false</code>) : en production, quel serait le risque ?</li>\n<li><strong>Journaux agrégés</strong> : <code>yarn logs -applicationId &lt;id&gt; | head</code> sur un job terminé.</li>\n<li><strong>Rendre la file permanente</strong> : bloc « TP2 » en fin de <code>hadoop/config</code>.</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "B.1 Conteneur plus grand que le maximum autorisé",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/yarn_trop_gros\ntimeout 120 yarn jar /tmp/hdd/tp2/clients.jar fr.orsys.hdd.tp1.ClientsParVille -D mapreduce.map.memory.mb=5000 \\\n     '/data/clean/clients/part-*' /data/out/yarn_trop_gros 2>&1 | grep -iE 'capability|invalid|maximum|HDD_ETAT' | head -5\necho \"--- limite du cluster :\"\ncurl -s http://resourcemanager:8088/conf | grep -o 'yarn.scheduler.maximum-allocation-mb</name><value>[0-9]*' | sed 's#</name><value># = #'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000023_54048440",
+      "id": "20261123-090023_054048440",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "B.2 Journaux agrégés d'un job terminé",
+      "text": "%sh\napp=$(yarn application -list -appStates FINISHED 2>/dev/null | grep clients-par-ville | tail -1 | awk '{print $1}')\necho \"Journaux agrégés de $app (extrait) :\"\nyarn logs -applicationId \"$app\" 2>/dev/null | grep -E 'LogType|Container:|INFO .*(Starting|Task|completed)' | head -15",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000024_497841475",
+      "id": "20261123-090024_497841475",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Contrôle",
+      "text": "%md\n### Contrôle des critères de réussite",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000025_610975828",
+      "id": "20261123-090025_610975828",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Contrôle des critères de réussite</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle automatique",
+      "text": "%sh\nok () { printf \"  [ OK ] %s\\n\" \"$1\"; }; ko () { printf \"  [ KO ] %s\\n\" \"$1\"; }\na=$(grep 'maps simultanés' /tmp/hdd/tp2/A_map512.mesure 2>/dev/null | grep -o '[0-9]*' | head -1)\nb=$(grep 'maps simultanés' /tmp/hdd/tp2/B_map1024.mesure 2>/dev/null | grep -o '[0-9]*' | head -1)\n[ -n \"$a\" ] && [ -n \"$b\" ] && [ \"$b\" -lt \"$a\" ] && ok \"maps simultanés : $a (512 Mo) > $b (1024 Mo)\" || ko \"mesures A et B (étape 2)\"\ngrep -q 'file YARN *: dev' /tmp/hdd/tp2/D_file_dev.mesure 2>/dev/null && ok \"job exécuté dans la file dev\" || ko \"file dev (étapes 5 et 6)\"\ntues=$(curl -s \"http://resourcemanager:8088/ws/v1/cluster/apps?states=FINISHED,FAILED,KILLED\" | grep -o 'beyond physical memory' | wc -l)\n[ \"$tues\" = 0 ] && ok \"aucun conteneur tué pour dépassement mémoire\" || ko \"$tues conteneur(s) tué(s) pour dépassement mémoire\"\ntotal=$(curl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c \"import json,sys; print(json.load(sys.stdin)['clusterMetrics']['totalMB'])\")\necho \"  (capacité actuelle du nœud : $total Mo — remettre la valeur d'origine si besoin)\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000026_364575704",
+      "id": "20261123-090026_364575704",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    }
+  ],
+  "name": "TP2 - Configuration de l implementation YARN",
+  "id": "2HDD2ENOX",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/1 - Enonces/TP2 - Configuration de l implementation YARN"
+}

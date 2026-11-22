@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TP3 — Catalogue HBase : chargement, historique, mise à jour conditionnelle
+  Construction avec Maven (poste du formateur ou IDE, accès Internet requis) :
+      mvn -q package        ->  target/catalogue.jar
+  Dans le lab, les notebooks Zeppelin compilent directement avec javac (sans
+  Maven ni Internet) : même résultat. Les dépendances sont en « provided » :
+  elles sont fournies par le cluster au moment de l'exécution.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.orsys.hdd</groupId>
+  <artifactId>catalogue</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Mêmes versions que le cluster du lab -->
+    <hadoop.version>3.4.2</hadoop.version>
+    <hbase.version>2.6.7</hbase.version>
+    <pig.version>0.18.0</pig.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-shaded-client</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>catalogue</finalName>
+  </build>
+</project>

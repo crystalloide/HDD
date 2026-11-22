@@ -1,0 +1,1559 @@
+{
+  "paragraphs": [
+    {
+      "title": "Présentation du TP",
+      "text": "%md\n## TP4 — Référentiel client partagé sur Hadoop, avec Pig, Hive (et Java) — console de visualisation\n\n**Objectif** : mettre à disposition de plusieurs équipes un **référentiel client** dans HDFS, le construire avec Pig, l'interroger avec Hive et Impala, puis le visualiser.\n\n| Étape | Contenu |\n|---|---|\n| 1. Organiser | `/data/referentiel/clients` : zones brute, raffinée et ORC ; dépôt des fichiers |\n| 2. Partager | propriétaire et groupe, droits `750`, ACL de lecture pour un second groupe et pour les moteurs |\n| 3. Protéger | quota d'espace, instantané avant modification, test de restauration |\n| 4. Contrôler | `hdfs fsck`, facteur de réplication, console du NameNode (9870) |\n| 5. Transformer | script Pig Latin + UDF Java (Pig appelle Java), Pig embarqué (Java pilote Pig) |\n| 6. Interroger | table externe Hive, table ORC partitionnée ; Impala ; client Java JDBC |\n| 7. Visualiser | graphiques dans Zeppelin et dans Hue, consoles YARN et JobHistory |\n\n**Critères de réussite** : un utilisateur hors groupe ne peut pas lire le référentiel ; un fichier supprimé est restauré depuis l'instantané ; la même table est visible depuis Hive et Impala ; un graphique est produit dans la console.\n\nPrérequis : profil `full` (Hue et Impala). Comptes : voir le notebook *00*. Les commandes d'administration sont passées sous l'identité adéquate avec `HADOOP_USER_NAME` (authentification « simple ») : `hadoop` = superutilisateur, `crm_admin` = propriétaire du référentiel.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_550899402",
+      "id": "20261123-090001_550899402",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>TP4 — Référentiel client partagé sur Hadoop, avec Pig, Hive (et Java) — console de visualisation</h2>\n<p><strong>Objectif</strong> : mettre à disposition de plusieurs équipes un <strong>référentiel client</strong> dans HDFS, le construire avec Pig, l'interroger avec Hive et Impala, puis le visualiser.</p>\n<table>\n<thead>\n<tr>\n<th>Étape</th>\n<th>Contenu</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1. Organiser</td>\n<td><code>/data/referentiel/clients</code> : zones brute, raffinée et ORC ; dépôt des fichiers</td>\n</tr>\n<tr>\n<td>2. Partager</td>\n<td>propriétaire et groupe, droits <code>750</code>, ACL de lecture pour un second groupe et pour les moteurs</td>\n</tr>\n<tr>\n<td>3. Protéger</td>\n<td>quota d'espace, instantané avant modification, test de restauration</td>\n</tr>\n<tr>\n<td>4. Contrôler</td>\n<td><code>hdfs fsck</code>, facteur de réplication, console du NameNode (9870)</td>\n</tr>\n<tr>\n<td>5. Transformer</td>\n<td>script Pig Latin + UDF Java (Pig appelle Java), Pig embarqué (Java pilote Pig)</td>\n</tr>\n<tr>\n<td>6. Interroger</td>\n<td>table externe Hive, table ORC partitionnée ; Impala ; client Java JDBC</td>\n</tr>\n<tr>\n<td>7. Visualiser</td>\n<td>graphiques dans Zeppelin et dans Hue, consoles YARN et JobHistory</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Critères de réussite</strong> : un utilisateur hors groupe ne peut pas lire le référentiel ; un fichier supprimé est restauré depuis l'instantané ; la même table est visible depuis Hive et Impala ; un graphique est produit dans la console.</p>\n<p>Prérequis : profil <code>full</code> (Hue et Impala). Comptes : voir le notebook <em>00</em>. Les commandes d'administration sont passées sous l'identité adéquate avec <code>HADOOP_USER_NAME</code> (authentification « simple ») : <code>hadoop</code> = superutilisateur, <code>crm_admin</code> = propriétaire du référentiel.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 1",
+      "text": "%md\n### Étape 1 — Organiser\n\nLe référentiel appartient à l'équipe CRM (compte `crm_admin`, groupe `crm`). Trois zones :\n\n* `brute` : les fichiers tels que collectés ;\n* `raffinee` : le référentiel produit par Pig (1 ligne par client) et ses statistiques ;\n* `orc` : la table optimisée écrite par Hive.\n\nSeul le superutilisateur peut créer sous `/data/referentiel` puis donner la propriété à `crm_admin`.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_121863816",
+      "id": "20261123-090002_121863816",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 1 — Organiser</h3>\n<p>Le référentiel appartient à l'équipe CRM (compte <code>crm_admin</code>, groupe <code>crm</code>). Trois zones :</p>\n<ul>\n<li><code>brute</code> : les fichiers tels que collectés ;</li>\n<li><code>raffinee</code> : le référentiel produit par Pig (1 ligne par client) et ses statistiques ;</li>\n<li><code>orc</code> : la table optimisée écrite par Hive.</li>\n</ul>\n<p>Seul le superutilisateur peut créer sous <code>/data/referentiel</code> puis donner la propriété à <code>crm_admin</code>.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1.1 Créer les zones et déposer les fichiers",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"; CRM=\"env HADOOP_USER_NAME=crm_admin\"\n# TODO (superutilisateur) : créer /data/referentiel/clients/brute, /data/referentiel/clients/raffinee et /data/referentiel/clients/orc\n# TODO (superutilisateur) : /data/referentiel en 755 ; /data/referentiel/clients et ses sous-répertoires à crm_admin, groupe crm (chown -R)\n# TODO (crm_admin) : déposer /opt/data/hdd/clients/*.csv dans /data/referentiel/clients/brute\n$CRM hdfs dfs -ls -R /data/referentiel/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_272349028",
+      "id": "20261123-090003_272349028",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 2",
+      "text": "%md\n### Étape 2 — Partager\n\n1. Restreindre : `750` sur le référentiel et les zones brute et raffinée (`770` sur `orc`, où Hive écrira) : propriétaire en lecture-écriture, groupe `crm` en lecture, **personne d'autre**.\n2. Constater : `bob` (groupe `marketing`) et `eve` (hors groupe) sont refusés.\n3. Ouvrir par **ACL** : lecture pour le groupe `marketing` ; lecture pour les comptes de service `hive` et `impala` (Hive et Impala lisent les fichiers sous leur propre identité) ; écriture pour `hive` dans `orc`. Les entrées `default:` sont **héritées** par tout ce qui sera créé ensuite dans le répertoire.\n4. Vérifier : `bob` lit, `eve` est toujours refusée.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_112753102",
+      "id": "20261123-090004_112753102",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 2 — Partager</h3>\n<ol>\n<li>Restreindre : <code>750</code> sur le référentiel et les zones brute et raffinée (<code>770</code> sur <code>orc</code>, où Hive écrira) : propriétaire en lecture-écriture, groupe <code>crm</code> en lecture, <strong>personne d'autre</strong>.</li>\n<li>Constater : <code>bob</code> (groupe <code>marketing</code>) et <code>eve</code> (hors groupe) sont refusés.</li>\n<li>Ouvrir par <strong>ACL</strong> : lecture pour le groupe <code>marketing</code> ; lecture pour les comptes de service <code>hive</code> et <code>impala</code> (Hive et Impala lisent les fichiers sous leur propre identité) ; écriture pour <code>hive</code> dans <code>orc</code>. Les entrées <code>default:</code> sont <strong>héritées</strong> par tout ce qui sera créé ensuite dans le répertoire.</li>\n<li>Vérifier : <code>bob</code> lit, <code>eve</code> est toujours refusée.</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "2.1 Restreindre et constater",
+      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\n# TODO (crm_admin) : 750 sur /data/referentiel/clients, /data/referentiel/clients/brute et /data/referentiel/clients/raffinee ; 770 sur /data/referentiel/clients/orc\n$CRM hdfs dfs -ls /data/referentiel/clients\nfor u in alice bob eve; do\n  printf \"%-6s : \" $u; HADOOP_USER_NAME=$u hdfs dfs -ls /data/referentiel/clients/brute > /dev/null 2>/tmp/hdd_err && echo \"lecture autorisée\" || grep -o 'Permission denied.*' /tmp/hdd_err | cut -c1-90\ndone",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_600966933",
+      "id": "20261123-090005_600966933",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.2 Ouvrir par ACL",
+      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\n# TODO : ACL sur /data/referentiel/clients : lecture/traversée (r-x) pour le groupe marketing et les utilisateurs hive et impala\n# TODO : ACL sur /data/referentiel/clients/brute : r-x pour le groupe marketing\n# TODO : ACL sur /data/referentiel/clients/raffinee et /data/referentiel/clients/orc : mêmes entrées + leurs versions « default: » (héritées)\n# TODO : ACL sur /data/referentiel/clients/orc : rwx (et default:rwx) pour l'utilisateur hive\n#   syntaxe : hdfs dfs -setfacl -m group:marketing:r-x,user:hive:r-x,default:user:hive:r-x <chemin>\n$CRM hdfs dfs -getfacl /data/referentiel/clients/raffinee\n$CRM hdfs dfs -ls /data/referentiel/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_963507687",
+      "id": "20261123-090006_963507687",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.3 Vérifier",
+      "text": "%sh\nfor u in alice bob eve; do\n  printf \"%-6s : \" $u; HADOOP_USER_NAME=$u hdfs dfs -ls /data/referentiel/clients/brute > /dev/null 2>/tmp/hdd_err && echo \"lecture autorisée\" || grep -o 'Permission denied.*' /tmp/hdd_err | cut -c1-90\ndone\necho \"--- et en écriture ?\"\nHADOOP_USER_NAME=bob hdfs dfs -touchz /data/referentiel/clients/brute/essai_bob 2>&1 | grep -o 'Permission denied.*' | cut -c1-90",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_930116477",
+      "id": "20261123-090007_930116477",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 3",
+      "text": "%md\n**À retenir** : en authentification simple, n'importe qui peut se déclarer `crm_admin` avec `HADOOP_USER_NAME`. Les droits HDFS protègent contre les erreurs, pas contre la malveillance : en production, **Kerberos** authentifie les utilisateurs. Autre limite : Hive et Impala lisent sous leur propre identité (`doAs=false` ici), donc tout utilisateur SQL voit le référentiel ; le contrôle d'accès par table et par colonne relève alors d'**Apache Ranger**.\n\n### Étape 3 — Protéger : quota et instantané",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_991845445",
+      "id": "20261123-090008_991845445",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>À retenir</strong> : en authentification simple, n'importe qui peut se déclarer <code>crm_admin</code> avec <code>HADOOP_USER_NAME</code>. Les droits HDFS protègent contre les erreurs, pas contre la malveillance : en production, <strong>Kerberos</strong> authentifie les utilisateurs. Autre limite : Hive et Impala lisent sous leur propre identité (<code>doAs=false</code> ici), donc tout utilisateur SQL voit le référentiel ; le contrôle d'accès par table et par colonne relève alors d'<strong>Apache Ranger</strong>.</p>\n<h3>Étape 3 — Protéger : quota et instantané</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "3.1 Quotas d'espace et de noms",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"\n# TODO (superutilisateur) : quota d'espace de 1 Go sur /data/referentiel/clients (hdfs dfsadmin -setSpaceQuota ...)\n# TODO (superutilisateur) : quota de 10 000 noms (fichiers + répertoires) (hdfs dfsadmin -setQuota ...)\n$SU hdfs dfs -count -q -h -v /data/referentiel/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_647541876",
+      "id": "20261123-090009_647541876",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.2 Le piège du quota d'espace",
+      "text": "%sh\n# Piège classique : un quota d'espace se vérifie BLOC par bloc. Pour écrire,\n# HDFS réserve un bloc entier (128 Mo x réplication), même pour un petit fichier.\nSU=\"env HADOOP_USER_NAME=hadoop\"\n$SU hdfs dfs -mkdir -p /data/referentiel/bac_a_sable && $SU hdfs dfs -chmod 777 /data/referentiel/bac_a_sable\n$SU hdfs dfsadmin -setSpaceQuota 50m /data/referentiel/bac_a_sable\necho \"un fichier de 1 Ko\" > /tmp/hdd_petit.txt\nhdfs dfs -put -f /tmp/hdd_petit.txt /data/referentiel/bac_a_sable/ 2>&1 | grep -iE 'quota' | head -2 | cut -c1-200\n$SU hdfs dfs -rm -r -f -skipTrash /data/referentiel/bac_a_sable > /dev/null",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_48351682",
+      "id": "20261123-090010_048351682",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.3 Instantané avant modification, puis incident",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"; CRM=\"env HADOOP_USER_NAME=crm_admin\"\n# TODO (superutilisateur) : autoriser les instantanés sur /data/referentiel/clients (hdfs dfsadmin -allowSnapshot ...)\n$CRM hdfs dfs -deleteSnapshot /data/referentiel/clients avant_maj 2>/dev/null\n# TODO (crm_admin) : créer l'instantané « avant_maj » de /data/referentiel/clients (hdfs dfs -createSnapshot ...)\n$CRM hdfs dfs -ls /data/referentiel/clients/.snapshot\necho \"--- incident : suppression d'un fichier source\"\n$CRM hdfs dfs -rm -skipTrash /data/referentiel/clients/brute/web_2026-11.csv\n$CRM hdfs dfs -ls /data/referentiel/clients/brute",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_119522722",
+      "id": "20261123-090011_119522722",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.4 Restaurer depuis l'instantané",
+      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\n# Différence entre l'instantané et l'état courant (« . ») :\n$CRM hdfs snapshotDiff /data/referentiel/clients avant_maj .\n# TODO (crm_admin) : restaurer web_2026-11.csv en le copiant depuis /data/referentiel/clients/.snapshot/avant_maj/brute/ (hdfs dfs -cp -p ...)\n$CRM hdfs dfs -ls /data/referentiel/clients/brute",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_779108807",
+      "id": "20261123-090012_779108807",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 4",
+      "text": "%md\n**À observer** : un instantané ne copie rien au moment de sa création (il fige la liste des blocs) ; la suppression d'un fichier ne libère pas ses blocs tant qu'un instantané y fait référence. `.snapshot` est un répertoire en lecture seule, visible aussi dans la console http://localhost:9870 (*Utilities > Browse*, et *Snapshot* dans le menu).\n\n### Étape 4 — Contrôler",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000013_489866987",
+      "id": "20261123-090013_489866987",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>À observer</strong> : un instantané ne copie rien au moment de sa création (il fige la liste des blocs) ; la suppression d'un fichier ne libère pas ses blocs tant qu'un instantané y fait référence. <code>.snapshot</code> est un répertoire en lecture seule, visible aussi dans la console http://localhost:9870 (<em>Utilities &gt; Browse</em>, et <em>Snapshot</em> dans le menu).</p>\n<h3>Étape 4 — Contrôler</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4.1 fsck du référentiel",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"\n$SU hdfs fsck /data/referentiel/clients -files -blocks -locations | grep -E 'csv|blk_|Status|Total|replicated'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000014_350529644",
+      "id": "20261123-090014_350529644",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.2 Facteur de réplication",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"\n# Facteur de réplication 3 demandé... sur un cluster d'un seul DataNode\n$SU hdfs dfs -setrep 3 /data/referentiel/clients/brute/crm_2026-11.csv\n$SU hdfs fsck /data/referentiel/clients/brute -files | grep -E 'Under-replicated|Under replicated|Status' | head -4\n# Retour à 1 (seule valeur satisfaisable ici)\n$SU hdfs dfs -setrep 1 /data/referentiel/clients/brute/crm_2026-11.csv",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000015_708477891",
+      "id": "20261123-090015_708477891",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 5",
+      "text": "%md\n**À observer** : avec `-setrep 3`, `fsck` signale des blocs **sous-répliqués** (une seule copie possible sur un seul DataNode) ; le NameNode tenterait de créer les copies manquantes si d'autres DataNodes existaient. Retrouvez ces informations dans la console du NameNode (http://localhost:9870, *Overview* et *Datanodes*).\n\n### Étape 5 — Transformer avec Pig (Pig appelle Java)\n\nLe script Pig Latin construit le référentiel : suppression des doublons exacts, filtrage des lignes invalides, **normalisation des villes par une UDF Java**, regroupement par client (CA cumulé sur ses canaux), statistiques par ville. Pig compile le script en jobs **MapReduce** soumis à YARN, sous l'identité `crm_admin`.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000016_559919151",
+      "id": "20261123-090016_559919151",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>À observer</strong> : avec <code>-setrep 3</code>, <code>fsck</code> signale des blocs <strong>sous-répliqués</strong> (une seule copie possible sur un seul DataNode) ; le NameNode tenterait de créer les copies manquantes si d'autres DataNodes existaient. Retrouvez ces informations dans la console du NameNode (http://localhost:9870, <em>Overview</em> et <em>Datanodes</em>).</p>\n<h3>Étape 5 — Transformer avec Pig (Pig appelle Java)</h3>\n<p>Le script Pig Latin construit le référentiel : suppression des doublons exacts, filtrage des lignes invalides, <strong>normalisation des villes par une UDF Java</strong>, regroupement par client (CA cumulé sur ses canaux), statistiques par ville. Pig compile le script en jobs <strong>MapReduce</strong> soumis à YARN, sous l'identité <code>crm_admin</code>.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.1 UDF NormaliseVille.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp4/src/fr/orsys/hdd/tp4\ncat > /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/NormaliseVille.java <<'EOF'\npackage fr.orsys.hdd.tp4;\n\nimport java.io.IOException;\nimport java.text.Normalizer;\nimport java.util.Locale;\n\nimport org.apache.pig.EvalFunc;\nimport org.apache.pig.data.Tuple;\n\n/**\n * UDF Pig (Pig appelle Java) : normalise un nom de ville.\n * \"  saint-étienne \" -> \"SAINT-ETIENNE\" ; chaîne vide ou absente -> null.\n *\n * Utilisation dans un script :\n *   REGISTER '/tmp/hdd/tp4/udfs.jar';\n *   DEFINE NormaliseVille fr.orsys.hdd.tp4.NormaliseVille();\n *   b = FOREACH a GENERATE NormaliseVille(ville);\n *\n * Même règle que le mapper de collecte du TP1 et que la version PySpark du TP5.\n */\npublic class NormaliseVille extends EvalFunc<String> {\n\n  @Override\n  public String exec(Tuple in) throws IOException {\n    if (in == null || in.size() == 0 || in.get(0) == null) {\n      return null;\n    }\n    // TODO : à partir de in.get(0).toString() :\n    //   1. retirer les accents : Normalizer.normalize(s, Normalizer.Form.NFD) puis supprimer les \\\\p{M}\n    //   2. retirer les espaces en tête et en fin, réduire les espaces multiples à un seul\n    //   3. passer en majuscules (Locale.ROOT)\n    String v = \"\";\n    return v.isEmpty() ? null : v;\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/NormaliseVille.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000017_401678093",
+      "id": "20261123-090017_401678093",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.2 Compiler l'UDF (udfs.jar)",
+      "text": "%sh\ncd /tmp/hdd/tp4\nPIG_JAR=$(ls $PIG_HOME/pig-*-core-h3.jar $PIG_HOME/pig-*.jar 2>/dev/null | grep -v -- -withouthadoop | head -1)\necho \"Pig : $PIG_JAR\"\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$PIG_JAR:$(hadoop classpath)\" -d classes src/fr/orsys/hdd/tp4/NormaliseVille.java \\\n  && /opt/jdk17/bin/jar cf udfs.jar -C classes . && echo \"OK : $(ls -l udfs.jar)\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000018_901158505",
+      "id": "20261123-090018_901158505",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.3 Le script Pig Latin",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp4\ncat > /tmp/hdd/tp4/referentiel_clients.pig <<'EOF'\n-- =============================================================================\n-- TP4 — Référentiel client unique, en Pig Latin (exécuté en MapReduce sur YARN)\n--\n--   pig -x mapreduce \\\n--       -param BRUTE=/data/referentiel/clients/brute \\\n--       -param SORTIE_REF=/data/referentiel/clients/raffinee/clients \\\n--       -param SORTIE_STATS=/data/referentiel/clients/raffinee/stats_villes \\\n--       -param UDF_JAR=/tmp/hdd/tp4/udfs.jar \\\n--       -f referentiel_clients.pig\n--\n-- Entrée  : fichiers bruts id;nom;ville;ca;segment;canal;date_inscription\n--           (un client peut figurer dans plusieurs canaux)\n-- Sorties : référentiel (1 ligne par client) et statistiques par ville.\n-- Les deux STORE sont exécutés ensemble (« multi-query ») : les données ne\n-- sont lues qu'une fois.\n-- =============================================================================\n\nREGISTER '$UDF_JAR';\nDEFINE NormaliseVille fr.orsys.hdd.tp4.NormaliseVille();\n\nbrut = LOAD '$BRUTE' USING PigStorage(';')\n       AS (id:chararray, nom:chararray, ville:chararray, ca:chararray,\n           segment:chararray, canal:chararray, date_inscription:chararray);\n\n-- 1. Doublons exacts (même ligne exportée deux fois par le CRM) : supprimés\nuniques = DISTINCT brut;\n\n-- 2. Lignes exploitables : identifiant valide (élimine aussi les en-têtes et\n--    les lignes au mauvais séparateur), ville renseignée, CA numérique positif,\n--    date présente (élimine les lignes tronquées)\n-- TODO : garder les lignes dont l'id est au format C + 6 chiffres (MATCHES), la ville\n--        normalisée non nulle, le CA numérique positif et la date au format aaaa-mm-jj\nvalides = FILTER uniques BY id MATCHES 'C[0-9]{6}';\n\nnorm = FOREACH valides GENERATE\n           id,\n           TRIM(nom)             AS nom,\n           NormaliseVille(ville) AS ville,\n           (double) ca           AS ca,\n           LOWER(TRIM(segment))  AS segment,\n           LOWER(TRIM(canal))    AS canal,\n           date_inscription;\n\n-- 3. Un client = une ligne : CA cumulé sur ses canaux, liste des canaux\npar_client = GROUP norm BY id;\n-- TODO : pour chaque client (FOREACH imbriqué), produire dans cet ordre :\n--   id, nom, ville, segment (une valeur du groupe : MAX), ca_total (SUM arrondie : ROUND_TO),\n--   nb_canaux (COUNT des canaux distincts), canaux (BagToString(..., '|')),\n--   date_premiere_inscription (MIN)\nreferentiel = FOREACH par_client {\n    canaux = DISTINCT norm.canal;\n    GENERATE group AS id;\n};\n\n-- 4. Statistiques par ville, pour la console de visualisation\npar_ville = GROUP referentiel BY ville;\nstats_villes = FOREACH par_ville GENERATE\n                   group                                  AS ville,\n                   COUNT(referentiel)                     AS nb_clients,\n                   ROUND_TO(SUM(referentiel.ca_total), 2) AS ca_total;\n\nSTORE referentiel  INTO '$SORTIE_REF'   USING PigStorage(';');\nSTORE stats_villes INTO '$SORTIE_STATS' USING PigStorage(';');\nEOF\necho \"écrit : /tmp/hdd/tp4/referentiel_clients.pig\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000019_323983908",
+      "id": "20261123-090019_323983908",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.4 Exécuter le script (MapReduce sur YARN)",
+      "text": "%sh\ncd /tmp/hdd/tp4\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\n$CRM hdfs dfs -rm -r -f -skipTrash /data/referentiel/clients/raffinee/clients /data/referentiel/clients/raffinee/stats_villes\n$CRM pig -x mapreduce \\\n    -param BRUTE=/data/referentiel/clients/brute \\\n    -param SORTIE_REF=/data/referentiel/clients/raffinee/clients \\\n    -param SORTIE_STATS=/data/referentiel/clients/raffinee/stats_villes \\\n    -param UDF_JAR=/tmp/hdd/tp4/udfs.jar \\\n    -f /tmp/hdd/tp4/referentiel_clients.pig 2>&1 | tee /tmp/hdd/tp4/pig.log | grep -E 'Success|Failed|Input\\(s\\)|Output\\(s\\)|records|HadoopJobId|ERROR' | head -20\n$CRM hdfs dfs -ls /data/referentiel/clients/raffinee/clients /data/referentiel/clients/raffinee/stats_villes",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000020_376842849",
+      "id": "20261123-090020_376842849",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.5 Vérifier le référentiel produit",
+      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\necho \"clients dans le référentiel : $($CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* | wc -l)\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* | head -3\necho \"--- statistiques par ville\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/stats_villes/part-* | sort -t';' -k3,3gr | head -5\necho \"--- héritage des ACL par défaut sur un fichier créé par Pig\"\n$CRM hdfs dfs -getfacl /data/referentiel/clients/raffinee/clients/part-r-00000 2>/dev/null | head -12 || $CRM hdfs dfs -ls /data/referentiel/clients/raffinee/clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000021_41125612",
+      "id": "20261123-090021_041125612",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Pig embarqué",
+      "text": "%md\n**Questions** : combien de jobs MapReduce Pig a-t-il lancés (console http://localhost:19888) ? Pourquoi les deux `STORE` ne lisent-ils les fichiers qu'une fois ? Combien de clients uniques compte le référentiel, et combien de lignes valides avaient les fichiers bruts ?\n\n### Java pilote Pig : Pig embarqué\n\n`ReferentielPigServer` enchaîne des instructions Pig Latin depuis un programme Java (`PigServer`) : CA moyen par segment des clients présents dans plusieurs canaux.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000022_65556524",
+      "id": "20261123-090022_065556524",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong> : combien de jobs MapReduce Pig a-t-il lancés (console http://localhost:19888) ? Pourquoi les deux <code>STORE</code> ne lisent-ils les fichiers qu'une fois ? Combien de clients uniques compte le référentiel, et combien de lignes valides avaient les fichiers bruts ?</p>\n<h3>Java pilote Pig : Pig embarqué</h3>\n<p><code>ReferentielPigServer</code> enchaîne des instructions Pig Latin depuis un programme Java (<code>PigServer</code>) : CA moyen par segment des clients présents dans plusieurs canaux.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.6 ReferentielPigServer.java (fourni)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp4/src/fr/orsys/hdd/tp4\ncat > /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/ReferentielPigServer.java <<'EOF'\npackage fr.orsys.hdd.tp4;\n\nimport java.io.IOException;\nimport java.util.Iterator;\n\nimport org.apache.pig.ExecType;\nimport org.apache.pig.PigServer;\nimport org.apache.pig.backend.executionengine.ExecJob;\nimport org.apache.pig.data.Tuple;\n\n/**\n * Java pilote Pig (Pig embarqué) : l'application enchaîne des instructions\n * Pig Latin, que PigServer compile en jobs MapReduce soumis à YARN.\n *\n *   HADOOP_CLASSPATH=\"$PIG_JAR:$PIG_HOME/lib/*\" \\\n *     hadoop jar referentiel-pig.jar fr.orsys.hdd.tp4.ReferentielPigServer \\\n *       /data/referentiel/clients/raffinee/clients /data/referentiel/clients/raffinee/segments\n *\n * Calcul : pour les clients présents dans plusieurs canaux, nombre de clients\n * et CA moyen par segment.\n */\npublic class ReferentielPigServer {\n\n  public static void main(String[] args) throws IOException {\n    if (args.length != 2) {\n      System.err.println(\"Usage : ReferentielPigServer <référentiel> <sortie>\");\n      System.exit(2);\n    }\n    String entree = args[0];\n    String sortie = args[1];\n    PigServer pig = new PigServer(ExecType.MAPREDUCE);\n    try {\n      if (pig.existsFile(sortie)) {\n        pig.deleteFile(sortie);\n      }\n      pig.registerQuery(\"ref = LOAD '\" + entree + \"' USING PigStorage(';') AS (\"\n          + \"id:chararray, nom:chararray, ville:chararray, segment:chararray, ca_total:double, \"\n          + \"nb_canaux:long, canaux:chararray, date_premiere_inscription:chararray);\");\n      pig.registerQuery(\"multi = FILTER ref BY nb_canaux > 1;\");\n      pig.registerQuery(\"par_segment = GROUP multi BY segment;\");\n      pig.registerQuery(\"stats = FOREACH par_segment GENERATE group AS segment, \"\n          + \"COUNT(multi) AS nb_clients, ROUND_TO(AVG(multi.ca_total), 2) AS ca_moyen;\");\n      ExecJob job = pig.store(\"stats\", sortie, \"PigStorage(';')\");\n      System.out.println(\"PIG_STATUT=\" + job.getStatus());\n      Iterator<Tuple> resultats = job.getResults();\n      while (resultats.hasNext()) {\n        System.out.println(\"  \" + resultats.next());\n      }\n    } finally {\n      pig.shutdown();\n    }\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/ReferentielPigServer.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000023_320834337",
+      "id": "20261123-090023_320834337",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.7 ReferentielJdbc.java (client JDBC, utilisé à l'étape 6)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp4/src/fr/orsys/hdd/tp4\ncat > /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/ReferentielJdbc.java <<'EOF'\npackage fr.orsys.hdd.tp4;\n\nimport java.sql.Connection;\nimport java.sql.DriverManager;\nimport java.sql.ResultSet;\nimport java.sql.SQLException;\nimport java.sql.Statement;\n\n/**\n * Client Java JDBC : interroge le référentiel par HiveServer2... ou par Impala,\n * avec le même pilote (protocole HiveServer2) et la même requête.\n *\n *   java -cp \"$HIVE_JDBC:referentiel-pig.jar\" fr.orsys.hdd.tp4.ReferentielJdbc \\\n *        \"jdbc:hive2://hiveserver2:10000/default\" hive\n *   java -cp \"$HIVE_JDBC:referentiel-pig.jar\" fr.orsys.hdd.tp4.ReferentielJdbc \\\n *        \"jdbc:hive2://impalad:21050/default;auth=noSasl\" impala\n */\npublic class ReferentielJdbc {\n\n  static final String REQUETE =\n      \"SELECT ville, COUNT(*) AS nb_clients, ROUND(SUM(ca_total), 2) AS ca_total \"\n      + \"FROM referentiel.clients_orc GROUP BY ville ORDER BY ca_total DESC LIMIT 10\";\n\n  public static void main(String[] args) throws SQLException, ClassNotFoundException {\n    String url = args.length > 0 ? args[0] : \"jdbc:hive2://hiveserver2:10000/default\";\n    String utilisateur = args.length > 1 ? args[1] : \"hive\";\n    Class.forName(\"org.apache.hive.jdbc.HiveDriver\");\n    long debut = System.nanoTime();\n    try (Connection cnx = DriverManager.getConnection(url, utilisateur, \"\");\n         Statement st = cnx.createStatement();\n         ResultSet rs = st.executeQuery(REQUETE)) {\n      System.out.printf(\"%-22s %10s %16s%n\", \"ville\", \"clients\", \"ca_total\");\n      while (rs.next()) {\n        System.out.printf(\"%-22s %10d %16.2f%n\", rs.getString(1), rs.getLong(2), rs.getDouble(3));\n      }\n    }\n    System.out.printf(\"JDBC_DUREE_MS=%d (%s)%n\", (System.nanoTime() - debut) / 1_000_000, url);\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp4/src/fr/orsys/hdd/tp4/ReferentielJdbc.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000024_955946428",
+      "id": "20261123-090024_955946428",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.8 Compiler et exécuter Pig embarqué",
+      "text": "%sh\ncd /tmp/hdd/tp4\nPIG_JAR=$(ls $PIG_HOME/pig-*-core-h3.jar $PIG_HOME/pig-*.jar 2>/dev/null | grep -v -- -withouthadoop | head -1)\nHIVE_JDBC=/opt/zeppelin/interpreter/jdbc/hive-jdbc-4.1.0-standalone.jar\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$PIG_JAR:$(hadoop classpath)\" -d classes $(find src -name '*.java') \\\n  && /opt/jdk17/bin/jar cf referentiel-pig.jar -C classes . && echo \"OK : $(ls -l referentiel-pig.jar)\"\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\n$CRM env HADOOP_CLASSPATH=\"$PIG_JAR:$PIG_HOME/lib/*:$PIG_HOME/lib/h3/*\" hadoop jar referentiel-pig.jar fr.orsys.hdd.tp4.ReferentielPigServer \\\n    /data/referentiel/clients/raffinee/clients /data/referentiel/clients/raffinee/segments 2>&1 | grep -E 'PIG_STATUT|^  \\(|ERROR' | head -12",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000025_329020883",
+      "id": "20261123-090025_329020883",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 6",
+      "text": "%md\n### Étape 6 — Interroger avec Hive, puis Impala\n\nLes tables sont **externes** : les données restent dans la zone du référentiel, sous la protection de ses droits ; `DROP TABLE` ne supprime que la définition. Hive lit les fichiers sous l'identité `hive` : c'est l'ACL posée à l'étape 2 qui l'y autorise.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000026_469918851",
+      "id": "20261123-090026_469918851",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 6 — Interroger avec Hive, puis Impala</h3>\n<p>Les tables sont <strong>externes</strong> : les données restent dans la zone du référentiel, sous la protection de ses droits ; <code>DROP TABLE</code> ne supprime que la définition. Hive lit les fichiers sous l'identité <code>hive</code> : c'est l'ACL posée à l'étape 2 qui l'y autorise.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "6.1 Tables externes sur la sortie Pig",
+      "text": "%hive\nCREATE DATABASE IF NOT EXISTS referentiel COMMENT 'Référentiel client partagé (TP HDD)';\n-- TODO : table externe referentiel.clients sur /data/referentiel/clients/raffinee/clients\n--        colonnes : id, nom, ville, segment, ca_total DOUBLE, nb_canaux INT, canaux, date_premiere_inscription\n--        format texte, séparateur « ; » (ROW FORMAT DELIMITED FIELDS TERMINATED BY ';')\n-- TODO : table externe referentiel.stats_villes (ville, nb_clients BIGINT, ca_total DOUBLE)\n--        sur /data/referentiel/clients/raffinee/stats_villes",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000027_410379998",
+      "id": "20261123-090027_410379998",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.2 Premiers contrôles",
+      "text": "%hive\nSELECT COUNT(*) AS nb_clients, ROUND(SUM(ca_total), 2) AS ca_total, SUM(IF(nb_canaux > 1, 1, 0)) AS multi_canaux\nFROM referentiel.clients",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000028_982438513",
+      "id": "20261123-090028_982438513",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.3 Table ORC partitionnée par ville",
+      "text": "%hive\n-- TODO : table externe referentiel.clients_orc, même schéma SANS la ville,\n--        PARTITIONED BY (ville STRING), STORED AS ORC,\n--        LOCATION '/data/referentiel/clients/orc'\nSET hive.exec.dynamic.partition=true;\nSET hive.exec.dynamic.partition.mode=nonstrict;\n-- TODO : INSERT OVERWRITE TABLE referentiel.clients_orc PARTITION (ville)\n--        SELECT ... , ville FROM referentiel.clients   (la colonne de partition en DERNIER)",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000029_692832932",
+      "id": "20261123-090029_692832932",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.4 Partitions créées",
+      "text": "%hive\nSHOW PARTITIONS referentiel.clients_orc",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000030_753922917",
+      "id": "20261123-090030_753922917",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.5 Plan d'exécution (élagage de partitions, DAG Tez)",
+      "text": "%hive\nEXPLAIN\nSELECT segment, COUNT(*) AS nb_clients, ROUND(AVG(ca_total), 2) AS ca_moyen\nFROM referentiel.clients_orc\nWHERE ville = 'LYON'\nGROUP BY segment",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000031_969422704",
+      "id": "20261123-090031_969422704",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.6 La même table vue par Impala",
+      "text": "%impala\nINVALIDATE METADATA referentiel.clients_orc;\nSELECT ville, COUNT(*) AS nb_clients, ROUND(SUM(ca_total), 2) AS ca_total\nFROM referentiel.clients_orc\nGROUP BY ville ORDER BY ca_total DESC LIMIT 10",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000032_554572930",
+      "id": "20261123-090032_554572930",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.7 Client Java JDBC : HiveServer2 puis Impala",
+      "text": "%sh\ncd /tmp/hdd/tp4\nHIVE_JDBC=/opt/zeppelin/interpreter/jdbc/hive-jdbc-4.1.0-standalone.jar\nfor cible in \"jdbc:hive2://hiveserver2:10000/default hive\" \"jdbc:hive2://impalad:21050/default;auth=noSasl impala\"; do\n  set -- $cible\n  /opt/jdk17/bin/java -cp \"$HIVE_JDBC:referentiel-pig.jar\" fr.orsys.hdd.tp4.ReferentielJdbc \"$1\" \"$2\" 2>/dev/null | tee \"/tmp/hdd/tp4/jdbc_$2.txt\"\n  echo\ndone",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000033_996374533",
+      "id": "20261123-090033_996374533",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 7",
+      "text": "%md\n**Questions** : comparez les durées Hive et Impala de la même requête. D'où vient l'écart ? Dans quel cas Hive reste-t-il le bon choix ?\n\n### Étape 7 — Visualiser : la console\n\n**Dans Zeppelin** : le résultat d'une requête s'affiche en tableau ou en graphique (barres, secteurs, lignes) avec les boutons au-dessus du résultat ; *settings* choisit les colonnes des axes.\n\n**Dans Hue** (http://localhost:8888, `hue` / `hue`) :\n\n1. *Éditeur > Hive* (ou *Impala*) : exécuter la requête du paragraphe 7.1 ;\n2. sous le résultat, onglet **graphique** : barres, X = `ville`, Y = `ca_total` ; enregistrer la requête (*Save*) ;\n3. *Fichiers* : naviguer jusqu'à `/data/referentiel/clients` — Hue agit sous l'identité de l'utilisateur connecté (`hue`) : **refusé**, faute d'ACL pour ce compte. C'est la sécurité HDFS vue de la console ;\n4. *Admin > Users* : créer l'utilisateur `bob`, se reconnecter avec lui : le référentiel devient lisible (groupe `marketing`) ;\n5. *Jobs* : les jobs MapReduce de Pig et les sessions Tez de Hive.\n\n**Consoles d'exploitation** : http://localhost:8088 (applications YARN), http://localhost:19888 (jobs Pig terminés, compteurs), http://localhost:9870 (instantanés, quotas, blocs).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000034_167460621",
+      "id": "20261123-090034_167460621",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong> : comparez les durées Hive et Impala de la même requête. D'où vient l'écart ? Dans quel cas Hive reste-t-il le bon choix ?</p>\n<h3>Étape 7 — Visualiser : la console</h3>\n<p><strong>Dans Zeppelin</strong> : le résultat d'une requête s'affiche en tableau ou en graphique (barres, secteurs, lignes) avec les boutons au-dessus du résultat ; <em>settings</em> choisit les colonnes des axes.</p>\n<p><strong>Dans Hue</strong> (http://localhost:8888, <code>hue</code> / <code>hue</code>) :</p>\n<ol>\n<li><em>Éditeur &gt; Hive</em> (ou <em>Impala</em>) : exécuter la requête du paragraphe 7.1 ;</li>\n<li>sous le résultat, onglet <strong>graphique</strong> : barres, X = <code>ville</code>, Y = <code>ca_total</code> ; enregistrer la requête (<em>Save</em>) ;</li>\n<li><em>Fichiers</em> : naviguer jusqu'à <code>/data/referentiel/clients</code> — Hue agit sous l'identité de l'utilisateur connecté (<code>hue</code>) : <strong>refusé</strong>, faute d'ACL pour ce compte. C'est la sécurité HDFS vue de la console ;</li>\n<li><em>Admin &gt; Users</em> : créer l'utilisateur <code>bob</code>, se reconnecter avec lui : le référentiel devient lisible (groupe <code>marketing</code>) ;</li>\n<li><em>Jobs</em> : les jobs MapReduce de Pig et les sessions Tez de Hive.</li>\n</ol>\n<p><strong>Consoles d'exploitation</strong> : http://localhost:8088 (applications YARN), http://localhost:19888 (jobs Pig terminés, compteurs), http://localhost:9870 (instantanés, quotas, blocs).</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "7.1 Chiffre d'affaires par ville (graphique)",
+      "text": "%hive\nSELECT ville, nb_clients, ca_total\nFROM referentiel.stats_villes\nORDER BY ca_total DESC",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "multiBarChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "ville",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "ca_total",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000035_817070771",
+      "id": "20261123-090035_817070771",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "7.2 Répartition par segment (secteurs)",
+      "text": "%hive\nSELECT segment, COUNT(*) AS nb_clients\nFROM referentiel.clients_orc\nGROUP BY segment",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "pieChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "pieChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "segment",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "nb_clients",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000036_993771264",
+      "id": "20261123-090036_993771264",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "7.3 Inscriptions par année et nombre de canaux",
+      "text": "%hive\nSELECT SUBSTR(date_premiere_inscription, 1, 4) AS annee, nb_canaux, COUNT(*) AS nb_clients\nFROM referentiel.clients_orc\nGROUP BY SUBSTR(date_premiere_inscription, 1, 4), nb_canaux\nORDER BY annee, nb_canaux",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "multiBarChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "annee",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [
+                {
+                  "name": "nb_canaux",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ],
+              "values": [
+                {
+                  "name": "nb_clients",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000037_383932579",
+      "id": "20261123-090037_383932579",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Contrôle",
+      "text": "%md\n### Contrôle des critères de réussite",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000038_696294925",
+      "id": "20261123-090038_696294925",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Contrôle des critères de réussite</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle automatique",
+      "text": "%sh\nok () { printf \"  [ OK ] %s\\n\" \"$1\"; }; ko () { printf \"  [ KO ] %s\\n\" \"$1\"; }\nHADOOP_USER_NAME=eve hdfs dfs -ls /data/referentiel/clients/raffinee > /dev/null 2>&1 && ko \"eve (hors groupe) lit le référentiel !\" || ok \"eve (hors groupe) ne peut pas lire le référentiel\"\nHADOOP_USER_NAME=bob hdfs dfs -ls /data/referentiel/clients/raffinee > /dev/null 2>&1 && ok \"bob (marketing) lit le référentiel grâce à l'ACL\" || ko \"bob ne lit pas le référentiel (étape 2.2)\"\nHADOOP_USER_NAME=crm_admin hdfs dfs -test -e /data/referentiel/clients/.snapshot/avant_maj/brute/web_2026-11.csv && HADOOP_USER_NAME=crm_admin hdfs dfs -test -e /data/referentiel/clients/brute/web_2026-11.csv \\\n  && ok \"fichier supprimé restauré depuis l'instantané avant_maj\" || ko \"instantané et restauration (étape 3)\"\nattendu=$(python3 -c \"import json; print(json.load(open('/opt/data/hdd/attendus.json'))['referentiel']['nb_clients'])\")\nn=$(HADOOP_USER_NAME=crm_admin hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* 2>/dev/null | wc -l)\n[ \"$n\" = \"$attendu\" ] && ok \"référentiel Pig : $n clients (attendu $attendu)\" || ko \"référentiel Pig : $n clients (attendu $attendu)\"\nh=$(sed -n '2,11p' /tmp/hdd/tp4/jdbc_hive.txt 2>/dev/null | awk '{print $1,$2}'); i=$(sed -n '2,11p' /tmp/hdd/tp4/jdbc_impala.txt 2>/dev/null | awk '{print $1,$2}')\n[ -n \"$h\" ] && [ \"$h\" = \"$i\" ] && ok \"même table, mêmes résultats depuis Hive et Impala\" || ko \"comparaison Hive / Impala (étape 6.7)\"\necho \"  (graphique : à constater dans Zeppelin, paragraphes 7.x, ou dans Hue)\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000039_462374256",
+      "id": "20261123-090039_462374256",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    }
+  ],
+  "name": "TP4 - Referentiel client partage - Pig Hive Java et console",
+  "id": "2HDD4ENOX",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/1 - Enonces/TP4 - Referentiel client partage - Pig Hive Java et console"
+}

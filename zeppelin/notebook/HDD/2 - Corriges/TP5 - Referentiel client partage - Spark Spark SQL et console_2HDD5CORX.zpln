@@ -1,0 +1,1264 @@
+{
+  "paragraphs": [
+    {
+      "title": "Présentation du TP",
+      "text": "%md\n## TP5 — Référentiel client partagé avec Spark et Spark SQL — console de visualisation\n\n**Objectif** : construire le même référentiel client qu'au TP4, cette fois avec **Spark** (DataFrames et Spark SQL), le partager avec Hive et Impala par le metastore, puis le visualiser et suivre les traitements dans les consoles.\n\n| Étape | Contenu |\n|---|---|\n| 0. Préparer | zone du référentiel et droits (script idempotent, si le TP4 n'a pas été fait) |\n| 1. Lire | fichiers bruts, schéma explicite, mode permissif |\n| 2. Nettoyer | doublons exacts, lignes invalides, normalisation des villes |\n| 3. Construire | une ligne par client : CA cumulé, canaux |\n| 4. Partager | Parquet partitionné dans la zone du référentiel ; table externe Hive, visible d'Impala |\n| 5. Interroger | Spark SQL : agrégats, fenêtres, comparaison avec le TP4 |\n| 6. Visualiser | graphiques Zeppelin, Spark UI (4040), Spark History (18080), Hue |\n| 7. Industrialiser | la même chaîne en batch avec `spark-submit` |\n\n**Critères de réussite** : le référentiel Spark compte autant de clients que prévu ; la même table est visible depuis Spark, Hive et Impala avec les mêmes totaux ; un utilisateur hors groupe ne peut pas lire les fichiers ; un graphique est produit dans la console.\n\nPrérequis : profil `full`. L'interpréteur Spark de Zeppelin agit sur HDFS sous l'identité **`root`** : ce compte de service reçoit une ACL sur la zone du référentiel, comme `hive` et `impala`. Premier paragraphe Spark : 30 à 60 s de démarrage.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_170477239",
+      "id": "20261123-090001_170477239",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>TP5 — Référentiel client partagé avec Spark et Spark SQL — console de visualisation</h2>\n<p><strong>Objectif</strong> : construire le même référentiel client qu'au TP4, cette fois avec <strong>Spark</strong> (DataFrames et Spark SQL), le partager avec Hive et Impala par le metastore, puis le visualiser et suivre les traitements dans les consoles.</p>\n<table>\n<thead>\n<tr>\n<th>Étape</th>\n<th>Contenu</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>0. Préparer</td>\n<td>zone du référentiel et droits (script idempotent, si le TP4 n'a pas été fait)</td>\n</tr>\n<tr>\n<td>1. Lire</td>\n<td>fichiers bruts, schéma explicite, mode permissif</td>\n</tr>\n<tr>\n<td>2. Nettoyer</td>\n<td>doublons exacts, lignes invalides, normalisation des villes</td>\n</tr>\n<tr>\n<td>3. Construire</td>\n<td>une ligne par client : CA cumulé, canaux</td>\n</tr>\n<tr>\n<td>4. Partager</td>\n<td>Parquet partitionné dans la zone du référentiel ; table externe Hive, visible d'Impala</td>\n</tr>\n<tr>\n<td>5. Interroger</td>\n<td>Spark SQL : agrégats, fenêtres, comparaison avec le TP4</td>\n</tr>\n<tr>\n<td>6. Visualiser</td>\n<td>graphiques Zeppelin, Spark UI (4040), Spark History (18080), Hue</td>\n</tr>\n<tr>\n<td>7. Industrialiser</td>\n<td>la même chaîne en batch avec <code>spark-submit</code></td>\n</tr>\n</tbody>\n</table>\n<p><strong>Critères de réussite</strong> : le référentiel Spark compte autant de clients que prévu ; la même table est visible depuis Spark, Hive et Impala avec les mêmes totaux ; un utilisateur hors groupe ne peut pas lire les fichiers ; un graphique est produit dans la console.</p>\n<p>Prérequis : profil <code>full</code>. L'interpréteur Spark de Zeppelin agit sur HDFS sous l'identité <strong><code>root</code></strong> : ce compte de service reçoit une ACL sur la zone du référentiel, comme <code>hive</code> et <code>impala</code>. Premier paragraphe Spark : 30 à 60 s de démarrage.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "0.1 Préparer la zone du référentiel (idempotent)",
+      "text": "%sh\nbash /opt/tp/commun/preparer_referentiel.sh",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_395019370",
+      "id": "20261123-090002_395019370",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 1",
+      "text": "%md\nLe script reprend les étapes « Organiser » et « Partager » du TP4 et ajoute la zone `spark` : écriture pour `root` (Spark), lecture pour `hive`, `impala` et le groupe `marketing`, avec entrées `default:` héritées.\n\n### Étape 1 — Lire les fichiers bruts",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_49310378",
+      "id": "20261123-090003_049310378",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p>Le script reprend les étapes « Organiser » et « Partager » du TP4 et ajoute la zone <code>spark</code> : écriture pour <code>root</code> (Spark), lecture pour <code>hive</code>, <code>impala</code> et le groupe <code>marketing</code>, avec entrées <code>default:</code> héritées.</p>\n<h3>Étape 1 — Lire les fichiers bruts</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1.1 Lecture avec un schéma explicite",
+      "text": "%spark.pyspark\nfrom pyspark.sql import functions as F, Window\nfrom pyspark.sql.types import StructType, StructField, StringType\n\nBRUTE = \"hdfs://namenode:8020/data/referentiel/clients/brute\"\nSORTIE = \"hdfs://namenode:8020/data/referentiel/clients/spark\"\n\n# Tout en chaîne de caractères : on contrôle et on convertit nous-mêmes à l'étape 2\nschema = StructType([StructField(c, StringType()) for c in\n                     [\"id\", \"nom\", \"ville\", \"ca\", \"segment\", \"canal\", \"date_inscription\"]])\nbrut = (spark.read\n        .option(\"sep\", \";\")\n        .option(\"header\", \"false\")       # l'en-tête de chaque fichier sera filtré comme une ligne invalide\n        .option(\"mode\", \"PERMISSIVE\")    # ligne mal formée -> colonnes nulles, pas d'arrêt\n        .schema(schema)\n        .csv(BRUTE))\nprint(\"lignes lues :\", brut.count(), \"| partitions :\", brut.rdd.getNumPartitions())\nbrut.show(5, truncate=False)",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_566401740",
+      "id": "20261123-090004_566401740",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "1.2 Quelques lignes anormales",
+      "text": "%spark.pyspark\n# Les anomalies, vues par Spark\nz.show(brut.filter(~F.col(\"id\").rlike(r\"^C[0-9]{6}$\") | F.col(\"date_inscription\").isNull()\n                   | (F.trim(F.col(\"ville\")) == \"\") | ~F.col(\"ca\").rlike(r\"^[0-9]+(\\.[0-9]+)?$\")).limit(15))",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_441243577",
+      "id": "20261123-090005_441243577",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 2",
+      "text": "%md\n### Étape 2 — Nettoyer et normaliser\n\nMêmes règles qu'au TP1 et au TP4 : doublons exacts supprimés, identifiant `C` + 6 chiffres, CA numérique positif, date `aaaa-mm-jj`, ville normalisée (accents retirés, espaces réduits, majuscules). La normalisation s'écrit avec les fonctions natives de Spark (`translate`, `regexp_replace`, `upper`) : pas d'UDF Python, donc pas d'aller-retour entre la JVM et Python.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_670587972",
+      "id": "20261123-090006_670587972",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 2 — Nettoyer et normaliser</h3>\n<p>Mêmes règles qu'au TP1 et au TP4 : doublons exacts supprimés, identifiant <code>C</code> + 6 chiffres, CA numérique positif, date <code>aaaa-mm-jj</code>, ville normalisée (accents retirés, espaces réduits, majuscules). La normalisation s'écrit avec les fonctions natives de Spark (<code>translate</code>, <code>regexp_replace</code>, <code>upper</code>) : pas d'UDF Python, donc pas d'aller-retour entre la JVM et Python.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "2.1 Règles de nettoyage",
+      "text": "%spark.pyspark\nACCENTS  = \"àâäáãåçéèêëíìîïñóòôöõúùûüýÿÀÂÄÁÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝ\"\nSANS_ACC = \"aaaaaaceeeeiiiinooooouuuuyyAAAAAACEEEEIIIINOOOOOUUUUY\"\n\ndef normalise_ville(col):\n    return F.upper(F.regexp_replace(F.trim(F.translate(col, ACCENTS, SANS_ACC)), r\"\\s+\", \" \"))\n\nsans_doublons = brut.dropDuplicates()\npropre = (sans_doublons\n          .filter(F.col(\"id\").rlike(r\"^C[0-9]{6}$\"))\n          .filter(F.col(\"ca\").rlike(r\"^[0-9]+(\\.[0-9]+)?$\"))\n          .filter(F.col(\"date_inscription\").rlike(r\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\"))\n          .withColumn(\"ville\", normalise_ville(F.col(\"ville\")))\n          .filter(F.col(\"ville\") != \"\")\n          .select(\"id\", F.trim(\"nom\").alias(\"nom\"), \"ville\",\n                  F.col(\"ca\").cast(\"double\").alias(\"ca\"),\n                  F.lower(F.trim(\"segment\")).alias(\"segment\"),\n                  F.lower(F.trim(\"canal\")).alias(\"canal\"),\n                  \"date_inscription\")\n          .cache())\nprint(\"lignes lues       :\", brut.count())\nprint(\"après doublons    :\", sans_doublons.count())\nprint(\"lignes valides    :\", propre.count())\nprint(\"villes distinctes :\", propre.select(\"ville\").distinct().count())",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_997045513",
+      "id": "20261123-090007_997045513",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 3",
+      "text": "%md\n### Étape 3 — Construire le référentiel : une ligne par client",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_268369114",
+      "id": "20261123-090008_268369114",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 3 — Construire le référentiel : une ligne par client</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "3.1 Agréger par client",
+      "text": "%spark.pyspark\nreferentiel = (propre.groupBy(\"id\")\n               .agg(F.max(\"nom\").alias(\"nom\"),\n                    F.max(\"ville\").alias(\"ville\"),\n                    F.max(\"segment\").alias(\"segment\"),\n                    F.round(F.sum(\"ca\"), 2).alias(\"ca_total\"),\n                    F.countDistinct(\"canal\").cast(\"int\").alias(\"nb_canaux\"),\n                    F.concat_ws(\"|\", F.array_sort(F.collect_set(\"canal\"))).alias(\"canaux\"),\n                    F.min(\"date_inscription\").alias(\"date_premiere_inscription\"))\n               .cache())\nprint(\"clients :\", referentiel.count(), \"| présents dans plusieurs canaux :\", referentiel.filter(\"nb_canaux > 1\").count())\nz.show(referentiel.orderBy(F.desc(\"ca_total\")).limit(10))",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_470043768",
+      "id": "20261123-090009_470043768",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.2 Plan d'exécution",
+      "text": "%spark.pyspark\nreferentiel.explain()   # plan physique : lecture CSV, filtres, HashAggregate, Exchange (shuffle)",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_983454820",
+      "id": "20261123-090010_983454820",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 4",
+      "text": "%md\n### Étape 4 — Écrire et partager\n\nSpark écrit du **Parquet** (colonnes, compressé) partitionné par ville dans la zone `spark` du référentiel. Puis Hive déclare une table externe sur ces fichiers : le **metastore** la rend visible de Spark, Hive, Impala et Hue. Les fichiers créés par Spark héritent des ACL `default:` de la zone.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_16439195",
+      "id": "20261123-090011_016439195",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 4 — Écrire et partager</h3>\n<p>Spark écrit du <strong>Parquet</strong> (colonnes, compressé) partitionné par ville dans la zone <code>spark</code> du référentiel. Puis Hive déclare une table externe sur ces fichiers : le <strong>metastore</strong> la rend visible de Spark, Hive, Impala et Hue. Les fichiers créés par Spark héritent des ACL <code>default:</code> de la zone.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4.1 Écrire en Parquet partitionné",
+      "text": "%spark.pyspark\n(referentiel.write.mode(\"overwrite\")\n    .partitionBy(\"ville\")\n    .parquet(SORTIE + \"/clients\"))\nstats = (referentiel.groupBy(\"ville\")\n         .agg(F.count(\"*\").alias(\"nb_clients\"), F.round(F.sum(\"ca_total\"), 2).alias(\"ca_total\")))\nstats.coalesce(1).write.mode(\"overwrite\").parquet(SORTIE + \"/stats_villes\")\nprint(\"écrit dans\", SORTIE)",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_260921235",
+      "id": "20261123-090012_260921235",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.2 Fichiers, volumes, ACL héritées",
+      "text": "%sh\nSU=\"env HADOOP_USER_NAME=hadoop\"\n$SU hdfs dfs -ls /data/referentiel/clients/spark/clients | head -6\n$SU hdfs dfs -du -s -h /data/referentiel/clients/raffinee/clients /data/referentiel/clients/spark/clients 2>/dev/null\necho \"--- ACL héritées par une partition écrite par Spark\"\n$SU hdfs dfs -getfacl \"/data/referentiel/clients/spark/clients/ville=LYON\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000013_443858651",
+      "id": "20261123-090013_443858651",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.3 Déclarer les tables dans le metastore (Hive)",
+      "text": "%hive\nCREATE DATABASE IF NOT EXISTS referentiel;\nCREATE EXTERNAL TABLE IF NOT EXISTS referentiel.clients_spark (\n  id                        STRING,\n  nom                       STRING,\n  segment                   STRING,\n  ca_total                  DOUBLE,\n  nb_canaux                 INT,\n  canaux                    STRING,\n  date_premiere_inscription STRING\n)\nPARTITIONED BY (ville STRING)\nSTORED AS PARQUET\nLOCATION '/data/referentiel/clients/spark/clients';\nMSCK REPAIR TABLE referentiel.clients_spark;\nCREATE EXTERNAL TABLE IF NOT EXISTS referentiel.stats_villes_spark (ville STRING, nb_clients BIGINT, ca_total DOUBLE)\nSTORED AS PARQUET\nLOCATION '/data/referentiel/clients/spark/stats_villes'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000014_875860601",
+      "id": "20261123-090014_875860601",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.4 Hive lit les fichiers de Spark",
+      "text": "%hive\nSELECT COUNT(*) AS nb_clients, COUNT(DISTINCT ville) AS nb_villes, ROUND(SUM(ca_total), 2) AS ca_total\nFROM referentiel.clients_spark",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000015_239987314",
+      "id": "20261123-090015_239987314",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.5 Impala aussi",
+      "text": "%impala\nINVALIDATE METADATA referentiel.clients_spark;\nSELECT COUNT(*) AS nb_clients, COUNT(DISTINCT ville) AS nb_villes, ROUND(SUM(ca_total), 2) AS ca_total\nFROM referentiel.clients_spark",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000016_729193463",
+      "id": "20261123-090016_729193463",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 5",
+      "text": "%md\n### Étape 5 — Interroger avec Spark SQL\n\nSpark lit la table par le metastore Hive partagé (`spark.table`, `%spark.sql`). Les requêtes ci-dessous utilisent des **fonctions de fenêtre** et comparent les référentiels des TP4 et TP5.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000017_486935858",
+      "id": "20261123-090017_486935858",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 5 — Interroger avec Spark SQL</h3>\n<p>Spark lit la table par le metastore Hive partagé (<code>spark.table</code>, <code>%spark.sql</code>). Les requêtes ci-dessous utilisent des <strong>fonctions de fenêtre</strong> et comparent les référentiels des TP4 et TP5.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.1 Les 3 meilleurs clients par ville (fenêtre)",
+      "text": "%spark.sql\nSELECT ville, segment, id, nom, ca_total, rang\nFROM (\n  SELECT ville, segment, id, nom, ca_total,\n         ROW_NUMBER() OVER (PARTITION BY ville ORDER BY ca_total DESC) AS rang\n  FROM referentiel.clients_spark\n) t\nWHERE rang <= 3 AND ville IN ('PARIS', 'LYON', 'MARSEILLE')\nORDER BY ville, rang",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000018_291266148",
+      "id": "20261123-090018_291266148",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.2 Indicateurs par segment",
+      "text": "%spark.sql\nSELECT segment,\n       COUNT(*)                                   AS nb_clients,\n       ROUND(AVG(ca_total), 2)                    AS ca_moyen,\n       ROUND(100 * AVG(IF(nb_canaux > 1, 1, 0)), 1) AS pct_multi_canaux\nFROM referentiel.clients_spark\nGROUP BY segment\nORDER BY ca_moyen DESC",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000019_82709545",
+      "id": "20261123-090019_082709545",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.3 Pig/Hive et Spark donnent-ils le même référentiel ?",
+      "text": "%spark.pyspark\n# Comparaison avec le référentiel Pig/Hive du TP4 (s'il existe)\nif spark.catalog.tableExists(\"referentiel.clients_orc\"):\n    tp4 = spark.table(\"referentiel.clients_orc\").select(\"id\", F.col(\"ca_total\").alias(\"ca_tp4\"))\n    tp5 = spark.table(\"referentiel.clients_spark\").select(\"id\", F.col(\"ca_total\").alias(\"ca_tp5\"))\n    ecarts = tp4.join(tp5, \"id\", \"full_outer\").filter(\"ca_tp4 IS NULL OR ca_tp5 IS NULL OR abs(ca_tp4 - ca_tp5) > 0.01\")\n    print(\"clients TP4 :\", tp4.count(), \"| clients TP5 :\", tp5.count(), \"| écarts :\", ecarts.count())\nelse:\n    print(\"Table referentiel.clients_orc absente : TP4 non réalisé, comparaison ignorée.\")",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000020_105142468",
+      "id": "20261123-090020_105142468",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 6",
+      "text": "%md\n### Étape 6 — Visualiser et suivre\n\n* Les résultats `%spark.sql` s'affichent en graphique (boutons au-dessus du résultat).\n* **Spark UI** http://localhost:4040 : *Jobs*, *Stages* (shuffle), *Storage* (DataFrames en cache), *SQL / DataFrame* (plans).\n* **Spark History** http://localhost:18080 : applications terminées (journaux d'événements dans `hdfs:///spark-logs`).\n* **Hue** : éditeur *Impala*, requête sur `referentiel.clients_spark`, onglet graphique.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000021_935973841",
+      "id": "20261123-090021_935973841",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 6 — Visualiser et suivre</h3>\n<ul>\n<li>Les résultats <code>%spark.sql</code> s'affichent en graphique (boutons au-dessus du résultat).</li>\n<li><strong>Spark UI</strong> http://localhost:4040 : <em>Jobs</em>, <em>Stages</em> (shuffle), <em>Storage</em> (DataFrames en cache), <em>SQL / DataFrame</em> (plans).</li>\n<li><strong>Spark History</strong> http://localhost:18080 : applications terminées (journaux d'événements dans <code>hdfs:///spark-logs</code>).</li>\n<li><strong>Hue</strong> : éditeur <em>Impala</em>, requête sur <code>referentiel.clients_spark</code>, onglet graphique.</li>\n</ul>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "6.1 Chiffre d'affaires par ville (barres)",
+      "text": "%spark.sql\nSELECT ville, nb_clients, ca_total\nFROM referentiel.stats_villes_spark\nORDER BY ca_total DESC",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "multiBarChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "ville",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "ca_total",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000022_524909244",
+      "id": "20261123-090022_524909244",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.2 Combinaisons de canaux (secteurs)",
+      "text": "%spark.sql\nSELECT canaux, COUNT(*) AS nb_clients\nFROM referentiel.clients_spark\nGROUP BY canaux\nORDER BY nb_clients DESC",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "pieChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "pieChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "canaux",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "nb_clients",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000023_58967445",
+      "id": "20261123-090023_058967445",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.3 Inscriptions par année et segment (courbes)",
+      "text": "%spark.sql\nSELECT SUBSTR(date_premiere_inscription, 1, 4) AS annee, segment, COUNT(*) AS nb_clients\nFROM referentiel.clients_spark\nGROUP BY SUBSTR(date_premiere_inscription, 1, 4), segment\nORDER BY annee",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "lineChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "lineChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "annee",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [
+                {
+                  "name": "segment",
+                  "index": 1,
+                  "aggr": "sum"
+                }
+              ],
+              "values": [
+                {
+                  "name": "nb_clients",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000024_467073067",
+      "id": "20261123-090024_467073067",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 7",
+      "text": "%md\n### Étape 7 — Industrialiser : la même chaîne en batch\n\nLe notebook sert à explorer ; en production, la chaîne est un programme soumis par `spark-submit` (ordonnancé par Airflow, Oozie...). `tp/tp5-spark/referentiel_spark.py` reprend les étapes 1 à 4. L'application apparaît dans le Spark Master (8080) puis dans le Spark History (18080).\n\n> Version légère du lab (worker Spark à 2 cœurs) : l'application Spark de Zeppelin occupe déjà les 2 cœurs, le programme batch resterait en attente (*WAITING*). Arrêtez d'abord l'interpréteur : menu utilisateur > *Interpreter* > `spark` > *restart*.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000025_281214630",
+      "id": "20261123-090025_281214630",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 7 — Industrialiser : la même chaîne en batch</h3>\n<p>Le notebook sert à explorer ; en production, la chaîne est un programme soumis par <code>spark-submit</code> (ordonnancé par Airflow, Oozie...). <code>tp/tp5-spark/referentiel_spark.py</code> reprend les étapes 1 à 4. L'application apparaît dans le Spark Master (8080) puis dans le Spark History (18080).</p>\n<blockquote>\n<p>Version légère du lab (worker Spark à 2 cœurs) : l'application Spark de Zeppelin occupe déjà les 2 cœurs, le programme batch resterait en attente (<em>WAITING</em>). Arrêtez d'abord l'interpréteur : menu utilisateur &gt; <em>Interpreter</em> &gt; <code>spark</code> &gt; <em>restart</em>.</p>\n</blockquote>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "7.1 spark-submit du programme batch",
+      "text": "%sh\nhead -40 /opt/tp/tp5-spark/referentiel_spark.py | tail -25\necho \"...\"\nspark-submit --master spark://spark-master:7077 --conf spark.cores.max=2 \\\n    /opt/tp/tp5-spark/referentiel_spark.py hdfs://namenode:8020/data/referentiel/clients/brute hdfs://namenode:8020/data/referentiel/clients/spark/batch 2>&1 \\\n  | grep -E 'SPARK_REFERENTIEL|^\\+|^\\|' | head -12",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000026_638642852",
+      "id": "20261123-090026_638642852",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Questions",
+      "text": "%md\n**Questions**\n\n1. Comparez le volume de `raffinee/clients` (texte, TP4) et de `spark/clients` (Parquet) : d'où vient l'écart ?\n2. Pourquoi le `count()` de l'étape 3.1 est-il bien plus rapide la deuxième fois ?\n3. Hive a dû exécuter `MSCK REPAIR TABLE` : pourquoi ? Que faudrait-il faire après une nouvelle écriture de Spark ?",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000027_33668517",
+      "id": "20261123-090027_033668517",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong></p>\n<ol>\n<li>Comparez le volume de <code>raffinee/clients</code> (texte, TP4) et de <code>spark/clients</code> (Parquet) : d'où vient l'écart ?</li>\n<li>Pourquoi le <code>count()</code> de l'étape 3.1 est-il bien plus rapide la deuxième fois ?</li>\n<li>Hive a dû exécuter <code>MSCK REPAIR TABLE</code> : pourquoi ? Que faudrait-il faire après une nouvelle écriture de Spark ?</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Réponses",
+      "text": "%md\n**Réponses**\n\n1. Parquet stocke par colonnes, encode (dictionnaire pour `segment`, `canaux`) et compresse (Snappy) : le volume est nettement plus faible que le texte. La colonne `ville` n'est même plus stockée : elle est portée par le nom du répertoire de partition.\n2. `cache()` : après la première action, le DataFrame reste en mémoire des executors (onglet *Storage* de la Spark UI).\n3. Les partitions écrites par Spark sont de simples répertoires : le metastore ne les connaît pas tant qu'on ne les déclare pas (`MSCK REPAIR TABLE` ou `ALTER TABLE ... ADD PARTITION`). Après réécriture : relancer `MSCK REPAIR` si de nouvelles villes apparaissent, et `REFRESH`/`INVALIDATE METADATA` côté Impala.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000028_604456848",
+      "id": "20261123-090028_604456848",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Réponses</strong></p>\n<ol>\n<li>Parquet stocke par colonnes, encode (dictionnaire pour <code>segment</code>, <code>canaux</code>) et compresse (Snappy) : le volume est nettement plus faible que le texte. La colonne <code>ville</code> n'est même plus stockée : elle est portée par le nom du répertoire de partition.</li>\n<li><code>cache()</code> : après la première action, le DataFrame reste en mémoire des executors (onglet <em>Storage</em> de la Spark UI).</li>\n<li>Les partitions écrites par Spark sont de simples répertoires : le metastore ne les connaît pas tant qu'on ne les déclare pas (<code>MSCK REPAIR TABLE</code> ou <code>ALTER TABLE ... ADD PARTITION</code>). Après réécriture : relancer <code>MSCK REPAIR</code> si de nouvelles villes apparaissent, et <code>REFRESH</code>/<code>INVALIDATE METADATA</code> côté Impala.</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle",
+      "text": "%md\n### Contrôle des critères de réussite",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000029_268838430",
+      "id": "20261123-090029_268838430",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Contrôle des critères de réussite</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle automatique",
+      "text": "%spark.pyspark\nimport json, subprocess\nattendus = json.load(open(\"/opt/data/hdd/attendus.json\"))[\"referentiel\"]\nok = lambda m: print(\"  [ OK ]\", m)\nko = lambda m: print(\"  [ KO ]\", m)\nn = spark.table(\"referentiel.clients_spark\").count()\n(ok if n == attendus[\"nb_clients\"] else ko)(f\"référentiel Spark : {n} clients (attendu {attendus['nb_clients']})\")\nca = spark.table(\"referentiel.clients_spark\").agg(F.round(F.sum(\"ca_total\"), 2)).first()[0]\n(ok if abs(ca - attendus[\"ca_total\"]) < 1 else ko)(f\"CA total : {ca} (attendu {attendus['ca_total']})\")\neve = subprocess.run([\"hdfs\", \"dfs\", \"-ls\", \"/data/referentiel/clients/spark/clients\"], env={**__import__(\"os\").environ, \"HADOOP_USER_NAME\": \"eve\"},\n                     capture_output=True, text=True)\n(ok if eve.returncode != 0 else ko)(\"eve (hors groupe) ne peut pas lire les fichiers du référentiel\")\nprint(\"  (Hive et Impala : comparer les paragraphes 4.4 et 4.5 ; graphique : paragraphes 6.x)\")",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000030_782663100",
+      "id": "20261123-090030_782663100",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    }
+  ],
+  "name": "TP5 - Referentiel client partage - Spark Spark SQL et console",
+  "id": "2HDD5CORX",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/2 - Corriges/TP5 - Referentiel client partage - Spark Spark SQL et console"
+}

@@ -1,0 +1,1430 @@
+{
+  "paragraphs": [
+    {
+      "title": "Présentation du TP",
+      "text": "%md\n## TP3 — HBase : gérer les modifications d'un catalogue de données\n\n**Objectif** : créer un catalogue produits dans HBase et y appliquer des modifications en conservant l'historique.\n\n| Étape | Contenu |\n|---|---|\n| 1. Créer | table `catalogue`, familles `info` (3 versions) et `stock`, depuis le shell |\n| 2. Charger | insérer les produits fournis avec un programme Java (Put par lots) |\n| 3. Modifier | changer des prix (shell et Java, modifications datées), ajouter une colonne `info:promo` à certains produits |\n| 4. Historiser | relire les 3 dernières versions d'un prix (shell puis API Java) |\n| 5. Sécuriser | mise à jour conditionnelle avec `checkAndMutate` |\n| 6. Exposer | table externe Hive sur le catalogue, puis une requête SQL (et Impala) |\n\n**Critères de réussite** : les trois versions d'un prix sont lisibles ; une colonne ajoutée n'existe que pour les lignes concernées ; la mise à jour conditionnelle échoue si la valeur a changé ; la requête Hive renvoie les valeurs courantes.\n\nPrérequis : profil `full` (ou `zeppelin` + `hbase`, et `impala` pour la dernière requête). Console HBase : http://localhost:16010. Fichiers fournis : `/opt/data/hdd/catalogue/` (produits, modifications datées, promotions).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000001_721583350",
+      "id": "20261123-090001_721583350",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h2>TP3 — HBase : gérer les modifications d'un catalogue de données</h2>\n<p><strong>Objectif</strong> : créer un catalogue produits dans HBase et y appliquer des modifications en conservant l'historique.</p>\n<table>\n<thead>\n<tr>\n<th>Étape</th>\n<th>Contenu</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1. Créer</td>\n<td>table <code>catalogue</code>, familles <code>info</code> (3 versions) et <code>stock</code>, depuis le shell</td>\n</tr>\n<tr>\n<td>2. Charger</td>\n<td>insérer les produits fournis avec un programme Java (Put par lots)</td>\n</tr>\n<tr>\n<td>3. Modifier</td>\n<td>changer des prix (shell et Java, modifications datées), ajouter une colonne <code>info:promo</code> à certains produits</td>\n</tr>\n<tr>\n<td>4. Historiser</td>\n<td>relire les 3 dernières versions d'un prix (shell puis API Java)</td>\n</tr>\n<tr>\n<td>5. Sécuriser</td>\n<td>mise à jour conditionnelle avec <code>checkAndMutate</code></td>\n</tr>\n<tr>\n<td>6. Exposer</td>\n<td>table externe Hive sur le catalogue, puis une requête SQL (et Impala)</td>\n</tr>\n</tbody>\n</table>\n<p><strong>Critères de réussite</strong> : les trois versions d'un prix sont lisibles ; une colonne ajoutée n'existe que pour les lignes concernées ; la mise à jour conditionnelle échoue si la valeur a changé ; la requête Hive renvoie les valeurs courantes.</p>\n<p>Prérequis : profil <code>full</code> (ou <code>zeppelin</code> + <code>hbase</code>, et <code>impala</code> pour la dernière requête). Console HBase : http://localhost:16010. Fichiers fournis : <code>/opt/data/hdd/catalogue/</code> (produits, modifications datées, promotions).</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "0.1 Les fichiers du catalogue",
+      "text": "%sh\nhead -4 /opt/data/hdd/catalogue/produits.csv\necho \"...\"; wc -l /opt/data/hdd/catalogue/*.csv\necho \"--- modifications datées (les 6 premières)\"\nhead -7 /opt/data/hdd/catalogue/modifications.csv\necho \"--- promotions\"\nhead -4 /opt/data/hdd/catalogue/promos.csv",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000002_559768899",
+      "id": "20261123-090002_559768899",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 1",
+      "text": "%md\n### Étape 1 — Créer la table depuis le shell HBase\n\nUne table HBase se déclare avec ses **familles de colonnes** seulement ; les colonnes elles-mêmes naissent à l'écriture. `VERSIONS => 3` : la famille `info` garde les trois dernières valeurs de chaque cellule.\n\nL'interpréteur `%hbase` exécute le paragraphe dans `hbase shell` (quelques secondes de démarrage à chaque fois).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000003_26790941",
+      "id": "20261123-090003_026790941",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 1 — Créer la table depuis le shell HBase</h3>\n<p>Une table HBase se déclare avec ses <strong>familles de colonnes</strong> seulement ; les colonnes elles-mêmes naissent à l'écriture. <code>VERSIONS =&gt; 3</code> : la famille <code>info</code> garde les trois dernières valeurs de chaque cellule.</p>\n<p>L'interpréteur <code>%hbase</code> exécute le paragraphe dans <code>hbase shell</code> (quelques secondes de démarrage à chaque fois).</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "1.1 Créer et décrire la table",
+      "text": "%hbase\ncreate 'catalogue', {NAME => 'info', VERSIONS => 3}, 'stock'\ndescribe 'catalogue'\nlist",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000004_238765812",
+      "id": "20261123-090004_238765812",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 2",
+      "text": "%md\n### Étape 2 — Charger avec l'API Java : Put par lots\n\n`ChargeCatalogue` lit `produits.csv` et envoie les lignes par **lots** de 50 `Put` : un aller-retour réseau par lot au lieu d'un par ligne. Toutes les cellules portent l'horodatage du 1er janvier 2026 (création du catalogue) : les modifications datées de l'étape 3 deviendront des versions plus récentes.\n\nUne `Connection` est lourde (à partager), une `Table` est légère (une par usage, à fermer) : d'où le *try-with-resources*.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000005_460600113",
+      "id": "20261123-090005_460600113",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 2 — Charger avec l'API Java : Put par lots</h3>\n<p><code>ChargeCatalogue</code> lit <code>produits.csv</code> et envoie les lignes par <strong>lots</strong> de 50 <code>Put</code> : un aller-retour réseau par lot au lieu d'un par ligne. Toutes les cellules portent l'horodatage du 1er janvier 2026 (création du catalogue) : les modifications datées de l'étape 3 deviendront des versions plus récentes.</p>\n<p>Une <code>Connection</code> est lourde (à partager), une <code>Table</code> est légère (une par usage, à fermer) : d'où le <em>try-with-resources</em>.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "2.1 Catalogue.java (constantes, fourni)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/Catalogue.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.time.LocalDate;\nimport java.time.ZoneOffset;\n\nimport org.apache.hadoop.hbase.TableName;\nimport org.apache.hadoop.hbase.util.Bytes;\n\n/** Constantes partagées par les programmes du TP : table, familles, colonnes. */\nfinal class Catalogue {\n\n  static final TableName TABLE = TableName.valueOf(\"catalogue\");\n  static final byte[] INFO = Bytes.toBytes(\"info\");\n  static final byte[] STOCK = Bytes.toBytes(\"stock\");\n  static final byte[] PRIX = Bytes.toBytes(\"prix\");\n\n  private Catalogue() { }\n\n  /** Date \"aaaa-mm-jj\" -> horodatage HBase (millisecondes, minuit UTC). */\n  static long horodatage(String date) {\n    return LocalDate.parse(date).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/Catalogue.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000006_941229201",
+      "id": "20261123-090006_941229201",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.2 ChargeCatalogue.java",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/ChargeCatalogue.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.io.BufferedReader;\nimport java.io.IOException;\nimport java.nio.charset.StandardCharsets;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\nimport java.util.ArrayList;\nimport java.util.List;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.hbase.HBaseConfiguration;\nimport org.apache.hadoop.hbase.client.Connection;\nimport org.apache.hadoop.hbase.client.ConnectionFactory;\nimport org.apache.hadoop.hbase.client.Put;\nimport org.apache.hadoop.hbase.client.Table;\nimport org.apache.hadoop.hbase.util.Bytes;\n\n/**\n * Chargement initial du catalogue par lots de Put.\n *\n *   java -cp \"$(hbase classpath):catalogue.jar\" fr.orsys.hdd.tp3.ChargeCatalogue produits.csv [taille_lot]\n *\n * Fichier : id;libelle;categorie;prix;quantite;entrepot (avec en-tête).\n * Toutes les cellules reçoivent l'horodatage du 2026-01-01 (création du catalogue) :\n * les changements de prix datés, appliqués ensuite, deviennent ainsi des versions\n * plus récentes de la même cellule.\n */\npublic class ChargeCatalogue {\n\n  static final String DATE_CREATION = \"2026-01-01\";\n\n  public static void main(String[] args) throws IOException {\n    if (args.length < 1) {\n      System.err.println(\"Usage : ChargeCatalogue <produits.csv> [taille_lot]\");\n      System.exit(2);\n    }\n    int tailleLot = args.length > 1 ? Integer.parseInt(args[1]) : 50;\n    long ts = Catalogue.horodatage(DATE_CREATION);\n    Configuration conf = HBaseConfiguration.create();\n    int total = 0;\n    int lots = 0;\n    try (Connection cnx = ConnectionFactory.createConnection(conf);\n         Table table = cnx.getTable(Catalogue.TABLE);\n         BufferedReader in = Files.newBufferedReader(Paths.get(args[0]), StandardCharsets.UTF_8)) {\n      List<Put> lot = new ArrayList<>();\n      String ligne = in.readLine();                       // en-tête\n      while ((ligne = in.readLine()) != null) {\n        String[] f = ligne.split(\";\", -1);\n        if (f.length != 6) {\n          System.err.println(\"ligne ignorée : \" + ligne);\n          continue;\n        }\n        Put p = new Put(Bytes.toBytes(f[0]));\n        p.addColumn(Catalogue.INFO, Bytes.toBytes(\"libelle\"), ts, Bytes.toBytes(f[1]));\n        p.addColumn(Catalogue.INFO, Bytes.toBytes(\"categorie\"), ts, Bytes.toBytes(f[2]));\n        p.addColumn(Catalogue.INFO, Catalogue.PRIX, ts, Bytes.toBytes(f[3]));\n        p.addColumn(Catalogue.STOCK, Bytes.toBytes(\"quantite\"), ts, Bytes.toBytes(f[4]));\n        p.addColumn(Catalogue.STOCK, Bytes.toBytes(\"entrepot\"), ts, Bytes.toBytes(f[5]));\n        lot.add(p);\n        if (lot.size() == tailleLot) {\n          table.put(lot);                                 // un seul aller-retour par lot\n          total += lot.size();\n          lots++;\n          lot.clear();\n        }\n      }\n      if (!lot.isEmpty()) {\n        table.put(lot);\n        total += lot.size();\n        lots++;\n      }\n    }\n    System.out.printf(\"CHARGEMENT produits=%d lots=%d%n\", total, lots);\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/ChargeCatalogue.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000007_223036854",
+      "id": "20261123-090007_223036854",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.3 AppliqueModifications.java (fourni, utilisé à l'étape 3)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/AppliqueModifications.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.io.BufferedReader;\nimport java.io.IOException;\nimport java.nio.charset.StandardCharsets;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\nimport java.util.ArrayList;\nimport java.util.List;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.hbase.HBaseConfiguration;\nimport org.apache.hadoop.hbase.client.Connection;\nimport org.apache.hadoop.hbase.client.ConnectionFactory;\nimport org.apache.hadoop.hbase.client.Put;\nimport org.apache.hadoop.hbase.client.Table;\nimport org.apache.hadoop.hbase.util.Bytes;\n\n/**\n * Application des modifications datées du catalogue.\n *\n *   java -cp \"$(hbase classpath):catalogue.jar\" fr.orsys.hdd.tp3.AppliqueModifications modifications.csv\n *\n * Fichier : id;famille;colonne;valeur;date_effet (avec en-tête).\n * Chaque Put porte l'horodatage de sa date d'effet : HBase conserve alors une\n * nouvelle version de la cellule (3 au maximum dans la famille info).\n */\npublic class AppliqueModifications {\n\n  public static void main(String[] args) throws IOException {\n    if (args.length != 1) {\n      System.err.println(\"Usage : AppliqueModifications <modifications.csv>\");\n      System.exit(2);\n    }\n    Configuration conf = HBaseConfiguration.create();\n    List<Put> puts = new ArrayList<>();\n    try (BufferedReader in = Files.newBufferedReader(Paths.get(args[0]), StandardCharsets.UTF_8)) {\n      String ligne = in.readLine();                       // en-tête\n      while ((ligne = in.readLine()) != null) {\n        String[] f = ligne.split(\";\", -1);\n        if (f.length != 5) {\n          continue;\n        }\n        Put p = new Put(Bytes.toBytes(f[0]));\n        p.addColumn(Bytes.toBytes(f[1]), Bytes.toBytes(f[2]), Catalogue.horodatage(f[4]),\n            Bytes.toBytes(f[3]));\n        puts.add(p);\n      }\n    }\n    try (Connection cnx = ConnectionFactory.createConnection(conf);\n         Table table = cnx.getTable(Catalogue.TABLE)) {\n      table.put(puts);\n    }\n    System.out.printf(\"MODIFICATIONS appliquees=%d%n\", puts.size());\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/AppliqueModifications.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000008_921056283",
+      "id": "20261123-090008_921056283",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.4 HistoriquePrix.java (utilisé à l'étape 4)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/HistoriquePrix.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.io.IOException;\nimport java.time.Instant;\nimport java.time.ZoneOffset;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.hbase.Cell;\nimport org.apache.hadoop.hbase.CellUtil;\nimport org.apache.hadoop.hbase.HBaseConfiguration;\nimport org.apache.hadoop.hbase.client.Connection;\nimport org.apache.hadoop.hbase.client.ConnectionFactory;\nimport org.apache.hadoop.hbase.client.Get;\nimport org.apache.hadoop.hbase.client.Result;\nimport org.apache.hadoop.hbase.client.Table;\nimport org.apache.hadoop.hbase.util.Bytes;\n\n/**\n * Historique d'un prix : les N dernières versions de la cellule info:prix.\n *\n *   java -cp \"$(hbase classpath):catalogue.jar\" fr.orsys.hdd.tp3.HistoriquePrix P0001 [3]\n */\npublic class HistoriquePrix {\n\n  public static void main(String[] args) throws IOException {\n    if (args.length < 1) {\n      System.err.println(\"Usage : HistoriquePrix <id_produit> [nb_versions]\");\n      System.exit(2);\n    }\n    int versions = args.length > 1 ? Integer.parseInt(args[1]) : 3;\n    Configuration conf = HBaseConfiguration.create();\n    try (Connection cnx = ConnectionFactory.createConnection(conf);\n         Table table = cnx.getTable(Catalogue.TABLE)) {\n      Get get = new Get(Bytes.toBytes(args[0]));\n      get.addColumn(Catalogue.INFO, Catalogue.PRIX);\n      get.readVersions(versions);\n      Result r = table.get(get);\n      if (r.isEmpty()) {\n        System.out.println(\"Produit inconnu : \" + args[0]);\n        return;\n      }\n      System.out.println(\"Versions de info:prix pour \" + args[0] + \" (la plus récente en premier) :\");\n      for (Cell c : r.getColumnCells(Catalogue.INFO, Catalogue.PRIX)) {\n        System.out.printf(\"  %s  %s%n\",\n            Instant.ofEpochMilli(c.getTimestamp()).atZone(ZoneOffset.UTC).toLocalDate(),\n            Bytes.toString(CellUtil.cloneValue(c)));\n      }\n    }\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/HistoriquePrix.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000009_200782220",
+      "id": "20261123-090009_200782220",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.5 MajConditionnelle.java (utilisé à l'étape 5)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/MajConditionnelle.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.hbase.HBaseConfiguration;\nimport org.apache.hadoop.hbase.client.CheckAndMutate;\nimport org.apache.hadoop.hbase.client.CheckAndMutateResult;\nimport org.apache.hadoop.hbase.client.Connection;\nimport org.apache.hadoop.hbase.client.ConnectionFactory;\nimport org.apache.hadoop.hbase.client.Put;\nimport org.apache.hadoop.hbase.client.Table;\nimport org.apache.hadoop.hbase.util.Bytes;\n\n/**\n * Mise à jour conditionnelle (« compare-and-set ») : le nouveau prix n'est\n * écrit que si le prix courant vaut toujours la valeur attendue. Test et\n * écriture sont atomiques sur le RegionServer.\n *\n *   java -cp \"$(hbase classpath):catalogue.jar\" fr.orsys.hdd.tp3.MajConditionnelle P0001 27.90 25.90\n */\npublic class MajConditionnelle {\n\n  public static void main(String[] args) throws IOException {\n    if (args.length != 3) {\n      System.err.println(\"Usage : MajConditionnelle <id_produit> <prix_attendu> <nouveau_prix>\");\n      System.exit(2);\n    }\n    byte[] ligne = Bytes.toBytes(args[0]);\n    Configuration conf = HBaseConfiguration.create();\n    try (Connection cnx = ConnectionFactory.createConnection(conf);\n         Table table = cnx.getTable(Catalogue.TABLE)) {\n      Put put = new Put(ligne).addColumn(Catalogue.INFO, Catalogue.PRIX, Bytes.toBytes(args[2]));\n      CheckAndMutate cam = CheckAndMutate.newBuilder(ligne)\n          .ifEquals(Catalogue.INFO, Catalogue.PRIX, Bytes.toBytes(args[1]))\n          .build(put);\n      CheckAndMutateResult res = table.checkAndMutate(cam);\n      if (res.isSuccess()) {\n        System.out.printf(\"MAJ_OK %s : %s -> %s%n\", args[0], args[1], args[2]);\n      } else {\n        System.out.printf(\"MAJ_REFUSEE %s : le prix courant n'est plus %s%n\", args[0], args[1]);\n      }\n    }\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/MajConditionnelle.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000010_75191582",
+      "id": "20261123-090010_075191582",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.6 CreerCatalogue.java (variante Java de l'étape 1, fournie)",
+      "text": "%sh\nmkdir -p /tmp/hdd/tp3/src/fr/orsys/hdd/tp3\ncat > /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/CreerCatalogue.java <<'EOF'\npackage fr.orsys.hdd.tp3;\n\nimport java.io.IOException;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.hbase.HBaseConfiguration;\nimport org.apache.hadoop.hbase.client.Admin;\nimport org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;\nimport org.apache.hadoop.hbase.client.Connection;\nimport org.apache.hadoop.hbase.client.ConnectionFactory;\nimport org.apache.hadoop.hbase.client.TableDescriptor;\nimport org.apache.hadoop.hbase.client.TableDescriptorBuilder;\n\n/**\n * Variante Java de la création de table (API à builders, HBase 2.x et 3.x) :\n * équivalent de  create 'catalogue', {NAME => 'info', VERSIONS => 3}, 'stock'\n *\n *   java -cp \"$(hbase classpath):catalogue.jar\" fr.orsys.hdd.tp3.CreerCatalogue\n */\npublic class CreerCatalogue {\n\n  public static void main(String[] args) throws IOException {\n    Configuration conf = HBaseConfiguration.create();\n    try (Connection cnx = ConnectionFactory.createConnection(conf);\n         Admin admin = cnx.getAdmin()) {\n      if (admin.tableExists(Catalogue.TABLE)) {\n        System.out.println(\"La table \" + Catalogue.TABLE + \" existe déjà : rien à faire.\");\n        return;\n      }\n      TableDescriptor td = TableDescriptorBuilder.newBuilder(Catalogue.TABLE)\n          .setColumnFamily(ColumnFamilyDescriptorBuilder.newBuilder(Catalogue.INFO)\n              .setMaxVersions(3).build())\n          .setColumnFamily(ColumnFamilyDescriptorBuilder.of(\"stock\"))\n          .build();\n      admin.createTable(td);\n      System.out.println(\"Table \" + Catalogue.TABLE + \" créée.\");\n    }\n  }\n}\nEOF\necho \"écrit : /tmp/hdd/tp3/src/fr/orsys/hdd/tp3/CreerCatalogue.java\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000011_283286572",
+      "id": "20261123-090011_283286572",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.7 Compiler (classpath : hbase classpath)",
+      "text": "%sh\ncd /tmp/hdd/tp3\nrm -rf classes && mkdir -p classes\n/opt/jdk17/bin/javac --release 17 -encoding UTF-8 -cp \"$(hbase classpath 2>/dev/null)\" -d classes $(find src -name '*.java') \\\n  && /opt/jdk17/bin/jar cf catalogue.jar -C classes . && echo \"OK : $(ls -l catalogue.jar)\" ",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000012_658257835",
+      "id": "20261123-090012_658257835",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.8 Charger le catalogue",
+      "text": "%sh\ncd /tmp/hdd/tp3\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.ChargeCatalogue /opt/data/hdd/catalogue/produits.csv 50 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000013_566269523",
+      "id": "20261123-090013_566269523",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "2.9 Vérifier dans le shell",
+      "text": "%hbase\ncount 'catalogue'\nget 'catalogue', 'P0001'\nscan 'catalogue', {LIMIT => 2}",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000014_775381563",
+      "id": "20261123-090014_775381563",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 3",
+      "text": "%md\n### Étape 3 — Modifier\n\n1. Changer un prix à la main dans le shell (horodatage = maintenant).\n2. Appliquer les **modifications datées** (3 vagues : avril, juillet, octobre 2026) avec `AppliqueModifications` : chaque `Put` porte l'horodatage de sa date d'effet.\n3. Ajouter la colonne `info:promo` **aux seuls produits en promotion** : le shell peut lire des commandes sur son entrée standard (`hbase shell -n`).",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000015_610505806",
+      "id": "20261123-090015_610505806",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 3 — Modifier</h3>\n<ol>\n<li>Changer un prix à la main dans le shell (horodatage = maintenant).</li>\n<li>Appliquer les <strong>modifications datées</strong> (3 vagues : avril, juillet, octobre 2026) avec <code>AppliqueModifications</code> : chaque <code>Put</code> porte l'horodatage de sa date d'effet.</li>\n<li>Ajouter la colonne <code>info:promo</code> <strong>aux seuls produits en promotion</strong> : le shell peut lire des commandes sur son entrée standard (<code>hbase shell -n</code>).</li>\n</ol>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "3.1 Modifier un prix dans le shell",
+      "text": "%hbase\nput 'catalogue', 'P0002', 'info:prix', '9.90'\nget 'catalogue', 'P0002', 'info:prix'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000016_337075822",
+      "id": "20261123-090016_337075822",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.2 Appliquer les modifications datées (Java)",
+      "text": "%sh\ncd /tmp/hdd/tp3\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.AppliqueModifications /opt/data/hdd/catalogue/modifications.csv 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000017_266229528",
+      "id": "20261123-090017_266229528",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.3 Ajouter info:promo aux produits en promotion",
+      "text": "%sh\n# Une commande « put » par ligne de promos.csv, envoyées en une fois au shell HBase\ntail -n +2 /opt/data/hdd/catalogue/promos.csv \\\n  | sed -E \"s/^([^;]+);(.*)$/put 'catalogue', '\\1', 'info:promo', '\\2'/\" > /tmp/hdd/tp3/promos.hbase\nhead -3 /tmp/hdd/tp3/promos.hbase\nhbase shell -n < /tmp/hdd/tp3/promos.hbase 2>&1 | grep -cE '^Took' | xargs echo \"commandes exécutées :\"",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000018_413058424",
+      "id": "20261123-090018_413058424",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "3.4 Une colonne n'existe que là où elle a été écrite",
+      "text": "%hbase\nscan 'catalogue', {COLUMNS => ['info:promo']}\nget 'catalogue', 'P0003'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000019_533859021",
+      "id": "20261123-090019_533859021",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 4",
+      "text": "%md\n**À observer** : le `scan` sur `info:promo` ne renvoie que les 15 produits en promotion ; `P0003` n'a pas de cellule `promo` du tout. Une table HBase est **creuse** : une colonne absente ne coûte rien, il n'y a pas de valeur « NULL » stockée.\n\n### Étape 4 — Historiser",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000020_998293269",
+      "id": "20261123-090020_998293269",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>À observer</strong> : le <code>scan</code> sur <code>info:promo</code> ne renvoie que les 15 produits en promotion ; <code>P0003</code> n'a pas de cellule <code>promo</code> du tout. Une table HBase est <strong>creuse</strong> : une colonne absente ne coûte rien, il n'y a pas de valeur « NULL » stockée.</p>\n<h3>Étape 4 — Historiser</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "4.1 Versions d'un prix dans le shell",
+      "text": "%hbase\nget 'catalogue', 'P0001', {COLUMN => 'info:prix', VERSIONS => 3}\nget 'catalogue', 'P0007', {COLUMN => 'info:prix', VERSIONS => 5}",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000021_351891848",
+      "id": "20261123-090021_351891848",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "4.2 Versions d'un prix avec l'API Java",
+      "text": "%sh\ncd /tmp/hdd/tp3\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.HistoriquePrix P0001 3 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.HistoriquePrix P0007 5 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000022_817570440",
+      "id": "20261123-090022_817570440",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Questions",
+      "text": "%md\n**Questions** : P0007 a reçu 4 prix (création + 3 vagues). Pourquoi n'en lit-on que 3 ? Quand la version la plus ancienne disparaît-elle physiquement du disque ?",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000023_264509199",
+      "id": "20261123-090023_264509199",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Questions</strong> : P0007 a reçu 4 prix (création + 3 vagues). Pourquoi n'en lit-on que 3 ? Quand la version la plus ancienne disparaît-elle physiquement du disque ?</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Réponse",
+      "text": "%md\n**Réponse** : `VERSIONS => 3` sur la famille `info` : à la lecture, HBase ne renvoie jamais plus de 3 versions ; la plus ancienne est supprimée physiquement lors d'une **compaction majeure** (réécriture des HFiles), visible avec `major_compact 'catalogue'`. Les horodatages ordonnent les versions : ici ce sont les dates d'effet, pas l'heure d'écriture.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000024_488106676",
+      "id": "20261123-090024_488106676",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<p><strong>Réponse</strong> : <code>VERSIONS =&gt; 3</code> sur la famille <code>info</code> : à la lecture, HBase ne renvoie jamais plus de 3 versions ; la plus ancienne est supprimée physiquement lors d'une <strong>compaction majeure</strong> (réécriture des HFiles), visible avec <code>major_compact 'catalogue'</code>. Les horodatages ordonnent les versions : ici ce sont les dates d'effet, pas l'heure d'écriture.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Étape 5",
+      "text": "%md\n### Étape 5 — Sécuriser : mise à jour conditionnelle\n\nDeux applications lisent le prix de P0001 (27.90) et veulent le changer. Avec un simple `Put`, la dernière écriture écrase l'autre sans le savoir. `checkAndMutate` teste et écrit **atomiquement** sur le RegionServer : le changement n'a lieu que si la valeur courante est encore celle attendue.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000025_994131677",
+      "id": "20261123-090025_994131677",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 5 — Sécuriser : mise à jour conditionnelle</h3>\n<p>Deux applications lisent le prix de P0001 (27.90) et veulent le changer. Avec un simple <code>Put</code>, la dernière écriture écrase l'autre sans le savoir. <code>checkAndMutate</code> teste et écrit <strong>atomiquement</strong> sur le RegionServer : le changement n'a lieu que si la valeur courante est encore celle attendue.</p>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "5.1 Deux mises à jour concurrentes",
+      "text": "%sh\ncd /tmp/hdd/tp3\necho \"1re mise à jour, prix attendu 27.90 :\"\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.MajConditionnelle P0001 27.90 25.90 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'\necho \"2e mise à jour, avec la même valeur attendue (devenue fausse) :\"\njava -cp \"$(hbase classpath 2>/dev/null):/tmp/hdd/tp3/catalogue.jar\" fr.orsys.hdd.tp3.MajConditionnelle P0001 27.90 24.90 2>&1 | grep -vE 'SLF4J|log4j|WARN|^\\s*$'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sh",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sh",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000026_177532716",
+      "id": "20261123-090026_177532716",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "5.2 Historique après la mise à jour",
+      "text": "%hbase\nget 'catalogue', 'P0001', {COLUMN => 'info:prix', VERSIONS => 3}",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000027_790396238",
+      "id": "20261123-090027_790396238",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Étape 6",
+      "text": "%md\n### Étape 6 — Exposer le catalogue au SQL\n\nHive et Impala ne lisent pas HBase directement dans ce lab. On **exporte** les valeurs courantes (la dernière version de chaque cellule) dans un fichier sur HDFS, puis on pose une table externe Hive dessus. L'export passe par le serveur Thrift d'HBase, avec la bibliothèque Python `happybase`.\n\n> Variante « en direct », sans copie : une table Hive `STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'` avec `\"hbase.columns.mapping\" = \":key,info:libelle,info:prix,...\"`. Elle lit HBase à chaque requête, mais exige les jars clients HBase et la configuration ZooKeeper côté HiveServer2 et sur les nœuds YARN.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000028_324952716",
+      "id": "20261123-090028_324952716",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Étape 6 — Exposer le catalogue au SQL</h3>\n<p>Hive et Impala ne lisent pas HBase directement dans ce lab. On <strong>exporte</strong> les valeurs courantes (la dernière version de chaque cellule) dans un fichier sur HDFS, puis on pose une table externe Hive dessus. L'export passe par le serveur Thrift d'HBase, avec la bibliothèque Python <code>happybase</code>.</p>\n<blockquote>\n<p>Variante « en direct », sans copie : une table Hive <code>STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'</code> avec <code>\"hbase.columns.mapping\" = \":key,info:libelle,info:prix,...\"</code>. Elle lit HBase à chaque requête, mais exige les jars clients HBase et la configuration ZooKeeper côté HiveServer2 et sur les nœuds YARN.</p>\n</blockquote>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "6.1 Exporter les valeurs courantes (happybase)",
+      "text": "%python\n# -*- coding: utf-8 -*-\n\"\"\"\nTP3 — Exposition du catalogue HBase à Hive / Impala par export.\nÀ exécuter dans Zeppelin (%python) : lit la table 'catalogue' par le serveur\nThrift d'HBase (happybase), écrit les valeurs COURANTES dans un fichier CSV\nsur HDFS (/data/catalogue/export), sur lequel une table externe Hive est posée.\n\nVariante « en direct » (sans copie) : table Hive STORED BY HBaseStorageHandler,\nvoir le notebook. Elle demande les jars clients HBase côté HiveServer2.\n\"\"\"\nimport io\nimport subprocess\n\nimport happybase\n\nCOLONNES = [(\"info\", \"libelle\"), (\"info\", \"categorie\"), (\"info\", \"prix\"), (\"info\", \"promo\"),\n            (\"stock\", \"quantite\"), (\"stock\", \"entrepot\")]\nCIBLE = \"/data/catalogue/export/catalogue.csv\"\n\nconn = happybase.Connection(\"hbase-thrift\", 9090, timeout=20000)\ntry:\n    table = conn.table(\"catalogue\")\n    tampon = io.StringIO()\n    nb = 0\n    for cle, cellules in table.scan():          # une version par cellule : la plus récente\n        valeurs = [cellules.get(f\"{f}:{q}\".encode(), b\"\").decode(\"utf-8\") for f, q in COLONNES]\n        tampon.write(\";\".join([cle.decode(\"utf-8\")] + valeurs) + \"\\n\")\n        nb += 1\nfinally:\n    conn.close()\n\nsubprocess.run([\"hdfs\", \"dfs\", \"-mkdir\", \"-p\", \"/data/catalogue/export\"], check=True)\nsubprocess.run([\"hdfs\", \"dfs\", \"-put\", \"-f\", \"-\", CIBLE],\n               input=tampon.getvalue().encode(\"utf-8\"), check=True)\nprint(f\"{nb} produits exportés vers {CIBLE}\")",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000029_16456922",
+      "id": "20261123-090029_016456922",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.2 Table externe Hive sur l'export",
+      "text": "%hive\n-- TP3 — Table externe Hive sur l'export du catalogue HBase\nCREATE DATABASE IF NOT EXISTS catalogue;\n\nCREATE EXTERNAL TABLE IF NOT EXISTS catalogue.produits_export (\n  id        STRING,\n  libelle   STRING,\n  categorie STRING,\n  prix      DOUBLE,\n  promo     STRING,\n  quantite  INT,\n  entrepot  STRING\n)\nROW FORMAT DELIMITED FIELDS TERMINATED BY ';'\nSTORED AS TEXTFILE\nLOCATION '/data/catalogue/export'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000030_673923163",
+      "id": "20261123-090030_673923163",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.3 Valeurs courantes vues par Hive",
+      "text": "%hive\nSELECT id, libelle, prix, promo FROM catalogue.produits_export WHERE id IN ('P0001', 'P0007')",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000031_610359817",
+      "id": "20261123-090031_610359817",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.4 Synthèse par catégorie (graphique)",
+      "text": "%hive\nSELECT categorie, COUNT(*) AS nb_produits, ROUND(AVG(prix), 2) AS prix_moyen,\n       SUM(quantite) AS stock_total, COUNT(NULLIF(promo, '')) AS nb_promos\nFROM catalogue.produits_export\nGROUP BY categorie\nORDER BY categorie",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "multiBarChart",
+              "height": 320.0,
+              "optionOpen": false,
+              "setting": {
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "categorie",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "prix_moyen",
+                  "index": 2,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000032_645278546",
+      "id": "20261123-090032_645278546",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "6.5 La même table vue par Impala",
+      "text": "%impala\nINVALIDATE METADATA catalogue.produits_export;\nSELECT categorie, COUNT(*) AS nb_produits, ROUND(AVG(prix), 2) AS prix_moyen\nFROM catalogue.produits_export GROUP BY categorie ORDER BY categorie",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/sql",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000033_794060877",
+      "id": "20261123-090033_794060877",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Bonus",
+      "text": "%md\n### Pour aller plus loin\n\n* **Filtre côté serveur** : `scan 'catalogue', {FILTER => \"SingleColumnValueFilter('info', 'categorie', =, 'binary:saisie')\"}`. Le filtre s'exécute sur le RegionServer, mais il parcourt toute la table : une bonne **clé de ligne** reste le premier levier de performance.\n* **Régions** : `list_regions 'catalogue'`, puis la page de la table sur http://localhost:16010.\n* **Créer la table en Java** : `disable 'catalogue'`, `drop 'catalogue'`, puis `CreerCatalogue` (API à builders, valable en HBase 2.x et 3.x) et rejouer les étapes 2 à 5.",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000034_243229271",
+      "id": "20261123-090034_243229271",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Pour aller plus loin</h3>\n<ul>\n<li><strong>Filtre côté serveur</strong> : <code>scan 'catalogue', {FILTER =&gt; \"SingleColumnValueFilter('info', 'categorie', =, 'binary:saisie')\"}</code>. Le filtre s'exécute sur le RegionServer, mais il parcourt toute la table : une bonne <strong>clé de ligne</strong> reste le premier levier de performance.</li>\n<li><strong>Régions</strong> : <code>list_regions 'catalogue'</code>, puis la page de la table sur http://localhost:16010.</li>\n<li><strong>Créer la table en Java</strong> : <code>disable 'catalogue'</code>, <code>drop 'catalogue'</code>, puis <code>CreerCatalogue</code> (API à builders, valable en HBase 2.x et 3.x) et rejouer les étapes 2 à 5.</li>\n</ul>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "B.1 Filtre côté serveur, régions",
+      "text": "%hbase\nscan 'catalogue', {FILTER => \"SingleColumnValueFilter('info', 'categorie', =, 'binary:saisie')\", COLUMNS => ['info:libelle', 'info:prix'], LIMIT => 5}\nlist_regions 'catalogue'",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "text",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/text",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000035_76993463",
+      "id": "20261123-090035_076993463",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    },
+    {
+      "title": "Contrôle",
+      "text": "%md\n### Contrôle des critères de réussite",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true,
+          "completionKey": "TAB",
+          "completionSupport": false
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/markdown",
+        "fontSize": 9.0,
+        "editorHide": true,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000036_956590184",
+      "id": "20261123-090036_956590184",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "FINISHED",
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "HTML",
+            "data": "<div class=\"markdown-body\">\n<h3>Contrôle des critères de réussite</h3>\n</div>"
+          }
+        ]
+      },
+      "dateStarted": "2026-11-23 09:00:00.000",
+      "dateFinished": "2026-11-23 09:00:00.000"
+    },
+    {
+      "title": "Contrôle automatique",
+      "text": "%python\nimport happybase, subprocess\nok = lambda m: print(\"  [ OK ]\", m)\nko = lambda m: print(\"  [ KO ]\", m)\nconn = happybase.Connection(\"hbase-thrift\", 9090, timeout=20000)\nt = conn.table(\"catalogue\")\nversions = t.cells(b\"P0001\", b\"info:prix\", versions=5)\n(ok if len(versions) == 3 else ko)(f\"P0001 : {len(versions)} versions lisibles de info:prix {[v.decode() for v in versions]}\")\npromos = sum(1 for _ in t.scan(columns=[b\"info:promo\"]))\ntotal = sum(1 for _ in t.scan(columns=[b\"info:libelle\"]))\n(ok if 0 < promos < total else ko)(f\"info:promo présente sur {promos} produits sur {total}\")\ncourant = t.row(b\"P0001\", columns=[b\"info:prix\"]).get(b\"info:prix\", b\"\").decode()\n(ok if courant == \"25.90\" else ko)(f\"mise à jour conditionnelle : prix courant de P0001 = {courant} (25.90 attendu, la 2e mise à jour refusée)\")\nconn.close()\nexport = subprocess.run([\"hdfs\", \"dfs\", \"-cat\", \"/data/catalogue/export/catalogue.csv\"], capture_output=True, text=True).stdout\nligne = next((l for l in export.splitlines() if l.startswith(\"P0001;\")), \"\")\n(ok if \";25.90;\" in ligne else ko)(f\"export lu par Hive à jour : {ligne or 'absent (étape 6.1)'}\")",
+      "user": "anonymous",
+      "dateUpdated": "2026-11-23 09:00:00.000",
+      "progress": 0,
+      "config": {
+        "tableHide": false,
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false,
+          "completionKey": "TAB",
+          "completionSupport": true
+        },
+        "colWidth": 12.0,
+        "editorMode": "ace/mode/python",
+        "fontSize": 9.0,
+        "editorHide": false,
+        "title": true,
+        "results": {},
+        "enabled": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1795824000037_819081544",
+      "id": "20261123-090037_819081544",
+      "dateCreated": "2026-11-23 09:00:00.000",
+      "status": "READY"
+    }
+  ],
+  "name": "TP3 - HBase - Gerer les modifications d un catalogue",
+  "id": "2HDD3CORX",
+  "defaultInterpreterGroup": "spark",
+  "version": "0.12.1",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/HDD/2 - Corriges/TP3 - HBase - Gerer les modifications d un catalogue"
+}
