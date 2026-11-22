@@ -1,0 +1,117 @@
+HADOOP_HOME=/opt/hadoop/
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+CORE-SITE.XML_fs.default.name=hdfs://namenode:8020
+CORE-SITE.XML_fs.defaultFS=hdfs://namenode:8020
+
+# Hue accède à HDFS via WebHDFS en se faisant passer pour l'utilisateur connecté
+# (mécanisme "proxy user" / doAs) : le NameNode doit l'y autoriser explicitement.
+CORE-SITE.XML_hadoop.proxyuser.hue.hosts=*
+CORE-SITE.XML_hadoop.proxyuser.hue.groups=*
+
+# ── HDFS ──────────────────────────────────────────────────────────────────────
+HDFS-SITE.XML_dfs.namenode.rpc-address=namenode:8020
+HDFS-SITE.XML_dfs.replication=1
+HDFS-SITE.XML_dfs.namenode.datanode.registration.ip-hostname-check=false
+
+# ── Permissions HDFS ACTIVÉES (adaptation HDD) ───────────────────────────────
+# Le TP « référentiel client partagé » protège une zone par droits et ACL :
+# le contrôle doit donc être actif. Pour que les moteurs continuent de se
+# partager librement tout le reste (chacun écrit sous sa propre identité :
+# hive, impala, root pour Zeppelin/Spark, hue...), le masque de création est
+# à 000 (fs.permissions.umask-mode, ici et dans la configuration cliente de
+# chaque composant) : un fichier ou répertoire créé sans droits explicites est
+# ouvert à tous, comme si le contrôle était désactivé. Seuls les répertoires
+# restreints volontairement (chmod, chown, setfacl) sont protégés.
+# Retour au comportement d'origine (aucun contrôle) : mettre false.
+HDFS-SITE.XML_dfs.permissions.enabled=true
+HDFS-SITE.XML_dfs.namenode.acls.enabled=true
+CORE-SITE.XML_fs.permissions.umask-mode=000
+
+# Comptes et groupes de test du TP référentiel. Le NameNode résout les groupes
+# d'un utilisateur ; cette table statique évite de créer des comptes Unix.
+#   crm_admin, alice : groupe crm (propriétaires du référentiel)
+#   bob              : groupe marketing (lecteur autorisé par ACL)
+#   eve              : groupe stagiaires (hors groupe : accès refusé)
+# Les comptes de service (hive, impala, root, hue) n'ont aucun groupe :
+# ils accèdent au référentiel par ACL nominative.
+CORE-SITE.XML_hadoop.user.group.static.mapping.overrides=dr.who=;crm_admin=crm;alice=crm;bob=marketing;eve=stagiaires
+HDFS-SITE.XML_dfs.webhdfs.enabled=true
+
+# ── MapReduce classique sur YARN (adaptation HDD) ────────────────────────────
+#    BD540 utilisait ici "yarn-tez" (un `hadoop jar` repris par Tez). Pour les
+#    TP MapReduce, un job lancé depuis un conteneur Hadoop doit être un VRAI
+#    job MapReduce, visible dans le JobHistory Server : "yarn".
+#    Hive garde sa propre configuration (hive-conf/mapred-site.xml, "yarn"
+#    également) ; le moteur Hive se choisit toujours par hive.execution.engine.
+MAPRED-SITE.XML_mapreduce.framework.name=yarn
+MAPRED-SITE.XML_yarn.app.mapreduce.am.env=HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/
+MAPRED-SITE.XML_mapreduce.map.env=HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/
+MAPRED-SITE.XML_mapreduce.reduce.env=HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/
+
+# JobHistory Server (service "historyserver") : écoute sur toutes les
+# interfaces du conteneur, annoncé sous le nom "historyserver".
+MAPRED-SITE.XML_mapreduce.jobhistory.address=historyserver:10020
+MAPRED-SITE.XML_mapreduce.jobhistory.webapp.address=historyserver:19888
+MAPRED-SITE.XML_mapreduce.jobhistory.bind-host=0.0.0.0
+MAPRED-SITE.XML_mapreduce.jobhistory.webapp.bind-host=0.0.0.0
+
+# ── YARN ──────────────────────────────────────────────────────────────────────
+YARN-SITE.XML_yarn.resourcemanager.hostname=resourcemanager
+YARN-SITE.XML_yarn.nodemanager.pmem-check-enabled=false
+YARN-SITE.XML_yarn.nodemanager.vmem-check-enabled=false
+YARN-SITE.XML_yarn.nodemanager.delete.debug-delay-sec=600
+YARN-SITE.XML_yarn.nodemanager.aux-services=mapreduce_shuffle
+YARN-SITE.XML_yarn.application.classpath=$HADOOP_HOME/etc/hadoop,$HADOOP_HOME/share/hadoop/common/*,$HADOOP_HOME/share/hadoop/common/lib/*,$HADOOP_HOME/share/hadoop/hdfs/*,$HADOOP_HOME/share/hadoop/hdfs/lib/*,$HADOOP_HOME/share/hadoop/mapreduce/*,$HADOOP_HOME/share/hadoop/mapreduce/lib/*,$HADOOP_HOME/share/hadoop/yarn/*,$HADOOP_HOME/share/hadoop/yarn/lib/*,/opt/tez/*,/opt/tez/lib/*
+
+# Dimensionnement du NodeManager unique : assez large pour héberger en même temps
+# l'AM Tez/MapReduce (512 Mo) et au moins une task (512 Mo) sans mettre le job en attente.
+# (memory-mb et cpu-vcores du NodeManager sont surchargés dans docker-compose :
+#  variables NM_MEMORY_MB / NM_VCORES, utilisées au TP YARN.)
+YARN-SITE.XML_yarn.nodemanager.resource.memory-mb=4096
+YARN-SITE.XML_yarn.nodemanager.resource.cpu-vcores=8
+YARN-SITE.XML_yarn.scheduler.maximum-allocation-mb=4096
+YARN-SITE.XML_yarn.scheduler.minimum-allocation-mb=256
+YARN-SITE.XML_yarn.scheduler.maximum-allocation-vcores=8
+
+# Agrégation des logs applicatifs sur HDFS : permet ensuite
+# `yarn logs -applicationId <id>` (ou `docker exec resourcemanager yarn logs
+# -applicationId <id>`) au lieu d'aller chercher les logs à la main dans le
+# système de fichiers local du NodeManager.
+YARN-SITE.XML_yarn.log-aggregation-enable=true
+YARN-SITE.XML_yarn.nodemanager.remote-app-log-dir=/tmp/logs
+# Lien « logs » des applications terminées dans l'UI du ResourceManager
+YARN-SITE.XML_yarn.log.server.url=http://historyserver:19888/jobhistory/logs
+
+# ── Capacity Scheduler ────────────────────────────────────────────────────────
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.maximum-applications=10000
+# Part de YARN réservable par les ApplicationMasters : 0.8 (0.5 à l'origine).
+# Hive sur Tez garde un AM vivant (512 Mo) par session JDBC ouverte, jusqu'à
+# 5 min d'inactivité. Hue et Zeppelin gardent leurs sessions ouvertes. Avec 0.5
+# (2 Go sur 4), deux sessions Tez suffisaient à bloquer l'AM MapReduce (1,5 Go)
+# en ACCEPTED pendant plusieurs minutes (benchmark_engines.sh « figé »).
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.maximum-am-resource-percent=0.8
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.resource-calculator=org.apache.hadoop.yarn.util.resource.DominantResourceCalculator
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.queues=default
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.capacity=100
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.user-limit-factor=1
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.maximum-capacity=100
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.state=RUNNING
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.acl_submit_applications=*
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.acl_administer_queue=*
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.node-locality-delay=40
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.queue-mappings=
+CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.queue-mappings-override.enable=false
+
+# ── TP2 — file « dev » PERMANENTE (optionnel) ─────────────────────────────────
+# Le TP ajoute la file à chaud (tp/tp2-yarn/ajouter_file_dev.sh). Pour la garder
+# après une recréation du ResourceManager : remplacer la ligne
+# « ...root.queues=default » ci-dessus par celle-ci, décommenter le bloc, puis
+#   docker compose up -d --force-recreate resourcemanager
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.queues=default,dev
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.capacity=70
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.capacity=30
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.maximum-capacity=50
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.user-limit-factor=2
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.state=RUNNING
+#CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.acl_submit_applications=*

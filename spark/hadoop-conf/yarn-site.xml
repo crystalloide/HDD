@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Permet "yarn application -list", "yarn jar", "pig" depuis Zeppelin (%sh).
+     Spark de l'atelier tourne en mode standalone, pas sur YARN. -->
+<configuration>
+  <property>
+    <name>yarn.resourcemanager.hostname</name>
+    <value>resourcemanager</value>
+  </property>
+  <!-- Lab HDD : jobs MapReduce et Pig soumis depuis Zeppelin. Classpath des
+       conteneurs YARN identique à celui du cluster (hadoop/config) :
+       $HADOOP_HOME est celui du NodeManager (/opt/hadoop/). -->
+  <property>
+    <name>yarn.application.classpath</name>
+    <value>$HADOOP_HOME/etc/hadoop,$HADOOP_HOME/share/hadoop/common/*,$HADOOP_HOME/share/hadoop/common/lib/*,$HADOOP_HOME/share/hadoop/hdfs/*,$HADOOP_HOME/share/hadoop/hdfs/lib/*,$HADOOP_HOME/share/hadoop/mapreduce/*,$HADOOP_HOME/share/hadoop/mapreduce/lib/*,$HADOOP_HOME/share/hadoop/yarn/*,$HADOOP_HOME/share/hadoop/yarn/lib/*,/opt/tez/*,/opt/tez/lib/*</value>
+  </property>
+</configuration>

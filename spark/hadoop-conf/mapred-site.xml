@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Client MapReduce de Zeppelin (%sh : yarn jar, pig, hadoop jar) — ajout HDD.
+  Sans ce fichier, un job soumis depuis Zeppelin s'exécuterait en local dans
+  le conteneur (mapreduce.framework.name=local par défaut), pas sur YARN.
+  Valeurs alignées sur hive-conf/mapred-site.xml (MapReduce de Hive, éprouvé
+  dans ce lab) + adresse du JobHistory Server (suivi des jobs terminés).
+-->
+<configuration>
+  <property>
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+  </property>
+  <property>
+    <name>yarn.app.mapreduce.am.env</name>
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/</value>
+  </property>
+  <property>
+    <name>mapreduce.map.env</name>
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.env</name>
+    <value>HADOOP_MAPRED_HOME=/opt/hadoop/share/hadoop/</value>
+  </property>
+  <property>
+    <name>mapreduce.application.classpath</name>
+    <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*,$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value>
+  </property>
+  <!-- AM et tâches : 512 Mo par défaut (1536 / 1024 dans Hadoop), pour que
+       plusieurs tâches tiennent ensemble sur le NodeManager unique du lab.
+       Le TP YARN fait varier ces valeurs avec -D. -->
+  <property>
+    <name>yarn.app.mapreduce.am.resource.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>yarn.app.mapreduce.am.command-opts</name>
+    <value>-Xmx410m</value>
+  </property>
+  <property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>mapreduce.map.java.opts</name>
+    <value>-Xmx410m</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.java.opts</name>
+    <value>-Xmx410m</value>
+  </property>
+  <property>
+    <name>mapreduce.jobhistory.address</name>
+    <value>historyserver:10020</value>
+  </property>
+  <property>
+    <name>mapreduce.jobhistory.webapp.address</name>
+    <value>historyserver:19888</value>
+  </property>
+</configuration>

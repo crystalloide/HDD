@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Client Hadoop (Spark, Zeppelin, commandes hdfs dfs) : cluster HDFS de l'atelier -->
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://namenode:8020</value>
+  </property>
+  <!-- Lab HDD : permissions HDFS actives, masque de création 000 (voir
+       hadoop/config). Ce que ce composant crée sur HDFS reste ouvert aux
+       autres moteurs, sauf restriction explicite (chmod, setfacl). -->
+  <property>
+    <name>fs.permissions.umask-mode</name>
+    <value>000</value>
+  </property>
+</configuration>

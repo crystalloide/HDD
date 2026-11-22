@@ -1,0 +1,121 @@
+id;libelle;categorie;prix;quantite;entrepot
+P0001;Clavier;saisie;29.90;120;Lyon
+P0002;Clavier;saisie;54.60;165;Marseille
+P0003;Écran 24 pouces;affichage;307.60;392;Paris-Nord
+P0004;Disque SSD 1 To;stockage;193.80;6;Lyon
+P0005;Routeur Wi-Fi 6;reseau;87.00;308;Marseille
+P0006;Micro USB;audio;50.80;302;Marseille
+P0007;Cartouche noire;impression;205.70;276;Marseille
+P0008;Souris;saisie;49.10;254;Lyon
+P0009;Écran 27 pouces;affichage;184.70;344;Lyon
+P0010;Disque SSD 2 To;stockage;193.70;334;Marseille
+P0011;Switch 8 ports;reseau;71.60;129;Lille
+P0012;Enceinte Bluetooth;audio;99.90;87;Paris-Nord
+P0013;Ramette A4;impression;119.30;241;Lyon
+P0014;Pavé numérique;saisie;42.70;174;Paris-Nord
+P0015;Écran incurvé 34 pouces;affichage;136.70;117;Lyon
+P0016;Disque dur 4 To;stockage;89.90;129;Paris-Nord
+P0017;Câble RJ45 5 m;reseau;68.20;1;Marseille
+P0018;Casque sans fil;audio;57.60;268;Lyon
+P0019;Scanner à plat;impression;212.00;305;Marseille
+P0020;Clavier sans fil;saisie;49.10;43;Paris-Nord
+P0021;Support d'écran;affichage;212.10;264;Lille
+P0022;Clé USB 128 Go;stockage;158.80;386;Lille
+P0023;Répéteur Wi-Fi;reseau;103.00;351;Lille
+P0024;Casque audio;audio;45.70;27;Marseille
+P0025;Imprimante laser;impression;220.40;302;Lille
+P0026;Souris ergonomique;saisie;19.50;394;Lyon
+P0027;Écran 24 pouces;affichage;315.70;69;Paris-Nord
+P0028;Disque SSD 1 To;stockage;91.20;37;Lille
+P0029;Routeur Wi-Fi 6;reseau;62.30;342;Lyon
+P0030;Micro USB;audio;124.60;48;Lille
+P0031;Cartouche noire;impression;167.30;98;Lille
+P0032;Clavier;saisie;43.20;243;Lille
+P0033;Écran 27 pouces;affichage;286.30;363;Lille
+P0034;Disque SSD 2 To;stockage;81.70;301;Lyon
+P0035;Switch 8 ports;reseau;109.80;379;Lille
+P0036;Enceinte Bluetooth;audio;105.00;241;Marseille
+P0037;Ramette A4;impression;86.80;257;Marseille
+P0038;Souris;saisie;19.30;270;Marseille
+P0039;Écran incurvé 34 pouces;affichage;299.00;96;Marseille
+P0040;Disque dur 4 To;stockage;80.00;161;Lyon
+P0041;Câble RJ45 5 m;reseau;101.00;330;Marseille
+P0042;Casque sans fil;audio;121.40;138;Paris-Nord
+P0043;Scanner à plat;impression;103.90;179;Lyon
+P0044;Pavé numérique;saisie;41.40;385;Paris-Nord
+P0045;Support d'écran;affichage;302.30;106;Lille
+P0046;Clé USB 128 Go;stockage;134.60;117;Marseille
+P0047;Répéteur Wi-Fi;reseau;114.40;351;Lyon
+P0048;Casque audio;audio;64.90;149;Paris-Nord
+P0049;Imprimante laser;impression;242.00;319;Marseille
+P0050;Clavier sans fil;saisie;42.60;135;Lyon
+P0051;Écran 24 pouces;affichage;126.70;185;Marseille
+P0052;Disque SSD 1 To;stockage;122.00;24;Marseille
+P0053;Routeur Wi-Fi 6;reseau;56.70;104;Paris-Nord
+P0054;Micro USB;audio;151.40;140;Lyon
+P0055;Cartouche noire;impression;183.50;359;Lille
+P0056;Souris ergonomique;saisie;33.60;256;Paris-Nord
+P0057;Écran 27 pouces;affichage;159.90;277;Marseille
+P0058;Disque SSD 2 To;stockage;100.60;179;Lille
+P0059;Switch 8 ports;reseau;63.00;21;Marseille
+P0060;Enceinte Bluetooth;audio;73.90;255;Paris-Nord
+P0061;Ramette A4;impression;75.20;207;Marseille
+P0062;Clavier;saisie;45.50;313;Paris-Nord
+P0063;Écran incurvé 34 pouces;affichage;309.50;287;Marseille
+P0064;Disque dur 4 To;stockage;114.00;248;Lille
+P0065;Câble RJ45 5 m;reseau;80.60;339;Marseille
+P0066;Casque sans fil;audio;45.10;298;Paris-Nord
+P0067;Scanner à plat;impression;125.10;114;Lille
+P0068;Souris;saisie;59.00;157;Paris-Nord
+P0069;Support d'écran;affichage;322.00;18;Lille
+P0070;Clé USB 128 Go;stockage;75.80;25;Lille
+P0071;Répéteur Wi-Fi;reseau;58.40;43;Lyon
+P0072;Casque audio;audio;58.60;261;Lyon
+P0073;Imprimante laser;impression;146.80;270;Marseille
+P0074;Pavé numérique;saisie;54.50;134;Lille
+P0075;Écran 24 pouces;affichage;114.10;21;Lyon
+P0076;Disque SSD 1 To;stockage;196.80;108;Marseille
+P0077;Routeur Wi-Fi 6;reseau;54.70;202;Paris-Nord
+P0078;Micro USB;audio;105.00;271;Marseille
+P0079;Cartouche noire;impression;111.00;16;Marseille
+P0080;Clavier sans fil;saisie;35.40;383;Paris-Nord
+P0081;Écran 27 pouces;affichage;329.00;394;Lille
+P0082;Disque SSD 2 To;stockage;80.80;187;Marseille
+P0083;Switch 8 ports;reseau;81.90;82;Lyon
+P0084;Enceinte Bluetooth;audio;55.80;289;Lille
+P0085;Ramette A4;impression;236.00;72;Lille
+P0086;Souris ergonomique;saisie;23.30;137;Lille
+P0087;Écran incurvé 34 pouces;affichage;284.40;72;Lille
+P0088;Disque dur 4 To;stockage;157.10;272;Paris-Nord
+P0089;Câble RJ45 5 m;reseau;103.50;192;Paris-Nord
+P0090;Casque sans fil;audio;78.50;171;Paris-Nord
+P0091;Scanner à plat;impression;172.40;386;Paris-Nord
+P0092;Clavier;saisie;35.70;201;Lyon
+P0093;Support d'écran;affichage;190.30;237;Paris-Nord
+P0094;Clé USB 128 Go;stockage;101.30;329;Lyon
+P0095;Répéteur Wi-Fi;reseau;68.20;250;Lyon
+P0096;Casque audio;audio;137.30;33;Lille
+P0097;Imprimante laser;impression;121.10;59;Lyon
+P0098;Souris;saisie;22.30;160;Lyon
+P0099;Écran 24 pouces;affichage;329.90;76;Lille
+P0100;Disque SSD 1 To;stockage;119.20;272;Lyon
+P0101;Routeur Wi-Fi 6;reseau;99.00;168;Lille
+P0102;Micro USB;audio;94.50;49;Paris-Nord
+P0103;Cartouche noire;impression;94.30;244;Lille
+P0104;Pavé numérique;saisie;22.00;243;Lyon
+P0105;Écran 27 pouces;affichage;350.40;139;Marseille
+P0106;Disque SSD 2 To;stockage;66.60;171;Lille
+P0107;Switch 8 ports;reseau;97.40;391;Lille
+P0108;Enceinte Bluetooth;audio;131.00;194;Marseille
+P0109;Ramette A4;impression;219.80;126;Marseille
+P0110;Clavier sans fil;saisie;29.10;115;Lille
+P0111;Écran incurvé 34 pouces;affichage;358.70;46;Lyon
+P0112;Disque dur 4 To;stockage;168.20;120;Lille
+P0113;Câble RJ45 5 m;reseau;47.30;182;Lyon
+P0114;Casque sans fil;audio;68.00;73;Paris-Nord
+P0115;Scanner à plat;impression;219.00;53;Marseille
+P0116;Souris ergonomique;saisie;61.10;74;Marseille
+P0117;Support d'écran;affichage;270.40;244;Lyon
+P0118;Clé USB 128 Go;stockage;69.50;358;Marseille
+P0119;Répéteur Wi-Fi;reseau;95.90;137;Paris-Nord
+P0120;Casque audio;audio;121.60;163;Paris-Nord
