@@ -55,7 +55,9 @@ cd HDD
 
 # Tous les TP (recommandé)
 docker compose --profile full up -d --build
+```
 
+```bash
 # ou : version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
