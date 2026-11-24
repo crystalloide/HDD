@@ -180,9 +180,13 @@ Par rapport au dépôt BD540 :
 ```bash
 # Tout arrêter et repartir de zéro (HDFS, metastore, notebooks modifiés, base Hue)
 docker compose --profile full --profile llap down -v
-
-# Réinstaller seulement les notebooks d'origine (après une mise à jour du dépôt)
+```
+```bash
+# Ou Réinstaller seulement les notebooks d'origine (après une mise à jour du dépôt)
 docker compose --profile full rm -sf zeppelin && docker volume rm hdd-lab_zeppelin_notebook
+```
+```bash
+# Et relancer
 docker compose --profile full up -d --build zeppelin
 ```
 
