@@ -4,7 +4,7 @@
 
 ### Poste stagiaire
 
-- VM Ubuntu (ou poste Linux) x86_64, **4 CPU / 16 Go de RAM minimum** pour le profil `full`, 25 Go de disque libre ; Docker Engine 23+ et Compose v2.
+- VM Ubuntu (ou poste Linux) x86_64, **4 CPU / 16 Go de RAM alloués à Docker minimum** pour le profil `full` (8 CPU / 24 Go conseillés), 25 Go de disque libre ; Docker Engine 23+ et Compose v2. Un conteneur tué par manque de mémoire s'arrête avec le code 137 (`docker inspect -f '{{.State.OOMKilled}}' <conteneur>`) : relever son `mem_limit` dans le compose.
 - Avec 16 Go de RAM au total (et non pour Docker seul) : utiliser `docker-compose-light.yml`.
 
 ### Préparation (la veille)
