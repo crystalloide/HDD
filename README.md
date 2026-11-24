@@ -56,7 +56,8 @@ cd HDD
 
 # Tous les TP (recommandé)
 docker compose --profile full up -d --build
-
+```
+```bash
 # ou : version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
@@ -66,7 +67,11 @@ Suivre l'initialisation, puis attendre que les services soient `healthy` (3 à 5
 ```bash
 docker compose logs tez-init          # doit finir par « Tez-Init : TERMINÉ avec succès ! »
 docker compose --profile full ps
+```
+```bash
 bash scripts/check_stack.sh            # chaque ligne doit afficher [ OK ]
+```
+```bash
 bash scripts/check_stack.sh --complet  # + un vrai job MapReduce soumis depuis Zeppelin
 ```
 
