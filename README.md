@@ -51,7 +51,7 @@ La pile est reprise du dépôt [crystalloide/BD540](https://github.com/crystallo
 
 ```bash
 cd ~
-sudo rm -RF HDD
+sudo rm -Rf HDD
 git clone https://github.com/crystalloide/HDD
 cd HDD
 
