@@ -42,7 +42,8 @@ La pile est reprise du dépôt [crystalloide/BD540](https://github.com/crystallo
 ## Prérequis
 
 - Docker Engine 23+ avec Compose v2 et BuildKit (ou Docker Desktop récent), machine **x86_64 / amd64** (Ubuntu conseillé).
-- Mémoire allouée à Docker : **16 Go** pour le profil `full` (tous les TP), ou 10 Go avec `docker-compose-light.yml` (plafonds CPU/mémoire par conteneur, machine de 4 CPU).
+- Machine de **4 CPU** minimum (8 conseillés) et mémoire allouée à Docker de **16 Go** minimum pour le profil `full` (24 Go conseillés). Chaque conteneur a un plafond CPU et mémoire, avec des tas Java alignés : budget détaillé en tête de `docker-compose.yml`, mesure réelle par `docker stats --no-stream`.
+- Machine de 16 Go de RAM au total : `docker-compose-light.yml` (mêmes services, plafonds plus serrés, conçu pour 4 CPU / 16 à 20 Go).
 - ~25 Go d'espace disque. Premier build : 15 à 30 minutes (téléchargements Docker Hub, miroirs Apache, Maven Central).
 - Ports libres : `9870 9864 8088 8042 19888 10000 10002 8080 8081 18080 8082 4040 2181 16010 16030 9090 9095 21050 25000 25010 25020 8888`.
 
@@ -55,9 +56,7 @@ cd HDD
 
 # Tous les TP (recommandé)
 docker compose --profile full up -d --build
-```
 
-```bash
 # ou : version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
@@ -167,6 +166,7 @@ Par rapport au dépôt BD540 :
 | `spark/hadoop-conf/mapred-site.xml` (nouveau), `yarn-site.xml` | client MapReduce de Zeppelin : YARN, JobHistory, conteneurs de 512 Mo | `yarn jar`, `pig`, `hadoop jar` depuis Zeppelin |
 | `spark/Dockerfile` (cible zeppelin) | **Apache Pig 0.18.0** (`/opt/pig`) | TP4 |
 | `docker-compose*.yml` | `nodemanager` : capacité réglable par `NM_MEMORY_MB` / `NM_VCORES` ; ports 8042 et 9864 ; montage `./tp` dans Zeppelin ; projet, images et réseau renommés `hdd-lab` | TP2 ; consoles ; sources des TP ; cohabitation avec BD540 |
+| `docker-compose*.yml`, `zeppelin/conf/zeppelin-env.sh` | plafonds `cpus` / `mem_limit` sur chaque service, tas Java alignés (`HADOOP_HEAPSIZE_MAX`, `SERVICE_OPTS`, `HBASE_HEAPSIZE`...), poids CPU réduit pour `nodemanager` et `spark-worker` ; healthchecks NameNode / ResourceManager par curl au lieu d'une JVM cliente ; `ZEPPELIN_MEM` / `ZEPPELIN_INTP_MEM` du compose pris en compte | aucun service ne peut affamer les autres ; redémarrage `stop` / `up` possible sans blocage en safe mode |
 | `scripts/check_stack.sh` | contrôles JobHistory, permissions, groupes, Pig, javac, sources des TP ; option `--complet` | vérification avant la session |
 
 ## Réinitialiser
@@ -174,8 +174,7 @@ Par rapport au dépôt BD540 :
 ```bash
 # Tout arrêter et repartir de zéro (HDFS, metastore, notebooks modifiés, base Hue)
 docker compose --profile full --profile llap down -v
-```
-```bash
+
 # Réinstaller seulement les notebooks d'origine (après une mise à jour du dépôt)
 docker compose --profile full rm -sf zeppelin && docker volume rm hdd-lab_zeppelin_notebook
 docker compose --profile full up -d --build zeppelin

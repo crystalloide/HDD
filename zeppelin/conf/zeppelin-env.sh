@@ -37,7 +37,9 @@ export HBASE_HOME=/opt/hbase
 export USE_HADOOP=false
 
 # ── Mémoire ───────────────────────────────────────────────────────────────────
-export ZEPPELIN_MEM="-Xms256m -Xmx1024m"
+# Valeurs par défaut de l'image : une variable déjà définie (environment du
+# docker-compose) est conservée.
+export ZEPPELIN_MEM="${ZEPPELIN_MEM:--Xms256m -Xmx1024m}"
 # Interpréteurs JDBC (%hive, %impala), %sh, %python. Le driver Spark, lui, est
 # dimensionné par spark.driver.memory (interpréteur spark).
-export ZEPPELIN_INTP_MEM="-Xms128m -Xmx512m"
+export ZEPPELIN_INTP_MEM="${ZEPPELIN_INTP_MEM:--Xms128m -Xmx512m}"

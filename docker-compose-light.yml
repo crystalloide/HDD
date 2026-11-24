@@ -14,9 +14,10 @@ name: hdd-lab
 #
 # Chaque conteneur a un plafond CPU (cpus) et mémoire (mem_limit). Les tas
 # Java sont alignés sur ces plafonds : le tas occupe ~50-70 % du plafond, le
-# reste couvre métaspace, threads, buffers natifs et les JVM clientes lancées
-# par les healthchecks (hdfs dfsadmin, yarn node -list). Un conteneur qui
-# dépasse son plafond est tué par le noyau (code de sortie 137).
+# reste couvre métaspace, threads et buffers natifs. Les healthchecks de
+# NameNode et ResourceManager passent par curl (API REST) : ils ne lancent
+# plus de JVM cliente. Un conteneur qui dépasse son plafond est tué par le
+# noyau (code de sortie 137).
 #
 # Plafonds mémoire cumulés des services permanents (hors one-shot) :
 #   défaut (HDFS, YARN, JobHistory, Hive)  8,75 Go (dont JobHistory : 0,75 Go, ajout HDD)
@@ -61,10 +62,12 @@ services:
       - ./data:/opt/data:ro
       - ./scripts:/opt/scripts:ro
     healthcheck:
-      # Le NameNode est "healthy" uniquement une fois sorti du safe mode
-      test: ["CMD-SHELL", "hdfs dfsadmin -safemode get 2>/dev/null | grep -q 'Safe mode is OFF'"]
+      # "healthy" dès que le NameNode est démarré (état "active"), sans JVM
+      # cliente : le DataNode peut alors s'enregistrer et faire sortir HDFS
+      # du safe mode, qu'attend tez-init (détails : docker-compose.yml).
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus' | grep -Eq '\"State\" *: *\"active\"'"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 30
       start_period: 40s
 
@@ -102,10 +105,11 @@ services:
       namenode:
         condition: service_healthy
     healthcheck:
-      # "healthy" seulement quand au moins un NodeManager est bien enregistré et RUNNING
-      test: ["CMD-SHELL", "yarn node -list 2>/dev/null | grep -q RUNNING"]
+      # "healthy" seulement quand au moins un NodeManager est bien enregistré
+      # et RUNNING (API REST du ResourceManager, sans lancer de JVM)
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:8088/ws/v1/cluster/nodes?states=RUNNING' | grep -q RUNNING"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 30
       start_period: 40s
 
@@ -497,9 +501,10 @@ services:
     cpus: 2.0
     mem_limit: 3584m
     environment:
-      # Défauts Zeppelin : 1 Go pour le serveur et 1 à 2 Go par interpréteur,
+      # Défauts Zeppelin : 1 Go pour le serveur et 1 Go par interpréteur,
       # trop pour le plafond. ZEPPELIN_INTP_MEM ne s'applique pas au driver
-      # Spark. Sans effet si le zeppelin-env.sh de l'image redéfinit ces variables.
+      # Spark. zeppelin/conf/zeppelin-env.sh ne garde ses propres valeurs
+      # que si ces variables sont absentes.
       ZEPPELIN_MEM: "-Xms256m -Xmx768m"
       ZEPPELIN_INTP_MEM: "-Xms128m -Xmx512m"
     ports:

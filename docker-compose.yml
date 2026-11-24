@@ -9,17 +9,80 @@ name: hdd-lab
 # Arrêt complet :  docker compose --profile full --profile llap down -v
 # ════════════════════════════════════════════════════════════════════════════
 
+# ════════════════════════════════════════════════════════════════════════════
+# Ressources — machine cible : 4 CPU minimum (8 conseillés), 16 Go de RAM
+# alloués à Docker minimum (24 Go conseillés) pour le profil full.
+# Machine plus petite : docker-compose-light.yml (plafonds plus serrés).
+#
+# 1. Plafonds par conteneur
+#    cpus      : temps CPU maximum (1.0 = un cœur). Les JVM (JDK 11/17) s'y
+#                adaptent : threads du GC, pools parallèles.
+#    mem_limit : mémoire maximum. Au-delà, le noyau tue le conteneur
+#                (code de sortie 137, "OOMKilled" dans docker inspect).
+#    Docker refuse de créer un conteneur dont cpus dépasse le nombre de CPU
+#    de la machine : le plus gros plafond ici est 3.0.
+#
+# 2. Tas Java alignés sur les plafonds
+#    Le -Xmx de chaque démon occupe 50 à 70 % du plafond ; le reste couvre
+#    la métaspace, les piles de threads et les tampons natifs. Sans réglage
+#    explicite, une JVM prend 1/4 du plafond (ou 1/4 de la RAM de l'hôte si
+#    le conteneur n'a pas de plafond).
+#      Hadoop (HDFS, YARN, JobHistory) : HADOOP_HEAPSIZE_MAX
+#      Hive : SERVICE_OPTS -Xmx      HBase : HBASE_HEAPSIZE
+#      Spark : SPARK_DAEMON_MEMORY   ZooKeeper : ZK_SERVER_HEAP (Mo)
+#      Impala : -mem_limit (impalad), JAVA_TOOL_OPTIONS -Xmx (JVM embarquée)
+#      Zeppelin : ZEPPELIN_MEM (serveur), ZEPPELIN_INTP_MEM (interpréteurs)
+#
+# 3. Conteneurs qui hébergent des calculs
+#    nodemanager  : les conteneurs YARN (AM et tâches MapReduce/Tez) tournent
+#                   DANS ce conteneur -> plafond = capacité YARN + démon.
+#    spark-worker : les exécuteurs Spark tournent DANS ce conteneur.
+#    zeppelin     : serveur + driver Spark + une JVM par interpréteur.
+#    Ces deux premiers ont un poids CPU réduit (cpu_shares 512, contre 1024
+#    par défaut) : quand la machine sature, NameNode, ResourceManager,
+#    HiveServer2 et les consoles passent avant les tâches de calcul.
+#
+# 4. Healthchecks sans JVM
+#    NameNode et ResourceManager sont sondés par curl (API REST) et non par
+#    "hdfs dfsadmin" / "yarn node -list", qui lançaient une JVM complète
+#    toutes les 10 s (1 à 2 s de CPU et ~200 Mo à chaque fois).
+#
+# Plafonds mémoire cumulés des services permanents (hors one-shot) :
+#   défaut (HDFS, YARN, JobHistory, Hive)  11,5 Go
+#   + spark ......................... +6,5 Go
+#   + zeppelin (spark inclus) ....... +6 Go    -> profil zeppelin : 24 Go
+#   + hbase (zookeeper inclus) ...... +3,25 Go
+#   + impala ........................ +4,4 Go
+#   + hue ........................... +1,9 Go
+#   full ............................ 33,5 Go de plafonds. Un plafond est un
+#                                     maximum, pas une réservation : la
+#                                     consommation réelle en TP est bien plus
+#                                     basse (estimation : 14 à 18 Go). Mesure :
+#                                     docker stats --no-stream
+#   llap (bonus, zookeeper inclus) .. +5,5 Go : à combiner avec le profil par
+#                                     défaut (17 Go), pas avec full.
+#   one-shot (tez-init, lab-init, hbase-init) : 0,75 à 1 Go chacun, le temps
+#                                     de l'initialisation.
+#
+# Les plafonds CPU ne se cumulent pas comme la mémoire : ils empêchent un
+# conteneur de monopoliser la machine, le temps CPU restant partagé entre tous.
+# ════════════════════════════════════════════════════════════════════════════
+
 services:
 
   # ══════════════════════════════════════════════════════════════════════════
   # Cluster Hadoop (HDFS + YARN) + Tez — construit depuis ./hadoop
   # Point de départ : https://github.com/crystalloide/hadoop-tez-docker
+  # HADOOP_HEAPSIZE_MAX fixe le -Xmx des démons ET des commandes clientes
+  # (hdfs dfs, yarn...) lancées dans le même conteneur.
   # ══════════════════════════════════════════════════════════════════════════
 
   namenode:
     build: ./hadoop
     hostname: namenode
     container_name: namenode
+    cpus: 1.0
+    mem_limit: 1280m
     command: ["hdfs", "namenode"]
     ports:
       - "9870:9870"
@@ -27,14 +90,21 @@ services:
       - ./hadoop/config
     environment:
       ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
+      HADOOP_HEAPSIZE_MAX: "512m"
     volumes:
       - ./data:/opt/data:ro
       - ./scripts:/opt/scripts:ro
     healthcheck:
-      # Le NameNode est "healthy" uniquement une fois sorti du safe mode
-      test: ["CMD-SHELL", "hdfs dfsadmin -safemode get 2>/dev/null | grep -q 'Safe mode is OFF'"]
+      # "healthy" dès que le NameNode est démarré (état "active") : le
+      # DataNode peut alors s'enregistrer, ce qui fait sortir le NameNode du
+      # safe mode. Les services qui écrivent sur HDFS attendent tez-init, qui
+      # attend lui-même la sortie du safe mode (init-tez.sh). Exiger ici
+      # "Safe mode is OFF" bloquerait un redémarrage (docker compose stop
+      # puis up) : un HDFS non vide reste en safe mode tant que le DataNode
+      # n'a pas déclaré ses blocs, et le DataNode attend ce healthcheck.
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus' | grep -Eq '\"State\" *: *\"active\"'"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 30
       start_period: 40s
 
@@ -42,11 +112,15 @@ services:
     build: ./hadoop
     hostname: datanode
     container_name: datanode
+    cpus: 1.0
+    mem_limit: 768m
     command: ["hdfs", "datanode"]
     ports:
       - "9864:9864"
     env_file:
       - ./hadoop/config
+    environment:
+      HADOOP_HEAPSIZE_MAX: "384m"
     depends_on:
       namenode:
         condition: service_healthy
@@ -55,19 +129,24 @@ services:
     build: ./hadoop
     hostname: resourcemanager
     container_name: resourcemanager
+    cpus: 1.0
+    mem_limit: 1g
     command: ["yarn", "resourcemanager"]
     ports:
       - "8088:8088"
     env_file:
       - ./hadoop/config
+    environment:
+      HADOOP_HEAPSIZE_MAX: "512m"
     depends_on:
       namenode:
         condition: service_healthy
     healthcheck:
-      # "healthy" seulement quand au moins un NodeManager est bien enregistré et RUNNING
-      test: ["CMD-SHELL", "yarn node -list 2>/dev/null | grep -q RUNNING"]
+      # "healthy" seulement quand au moins un NodeManager est bien enregistré
+      # et RUNNING (API REST du ResourceManager, sans lancer de JVM)
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:8088/ws/v1/cluster/nodes?states=RUNNING' | grep -q RUNNING"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 30
       start_period: 40s
 
@@ -75,14 +154,27 @@ services:
     build: ./hadoop
     hostname: nodemanager
     container_name: nodemanager
+    # Les conteneurs YARN (AM et tâches MapReduce/Tez, 512 Mo chacun) tournent
+    # DANS ce conteneur : plafond = capacité annoncée à YARN (NM_MEMORY_MB,
+    # 4 Go) + ~1 Go pour le démon NodeManager et la mémoire hors tas des JVM.
+    # pmem-check est désactivé (./hadoop/config) : c'est ce plafond qui borne
+    # réellement la mémoire des tâches.
+    # Si NM_MEMORY_MB est augmenté, augmenter NM_MEM_LIMIT d'autant :
+    #   NM_MEMORY_MB=6144 NM_MEM_LIMIT=7g docker compose up -d nodemanager
+    cpus: 3.0
+    cpu_shares: 512
+    mem_limit: ${NM_MEM_LIMIT:-5g}
     command: ["yarn", "nodemanager"]
     ports:
       - "8042:8042"
     env_file:
       - ./hadoop/config
     environment:
+      HADOOP_HEAPSIZE_MAX: "384m"
       # Capacité annoncée à YARN par le NodeManager, réglable au lancement
-      # (TP YARN) :  NM_MEMORY_MB=3072 docker compose up -d nodemanager
+      # (TP YARN) :  NM_MEMORY_MB=2048 docker compose up -d nodemanager
+      # vcores : unités de comptabilité YARN (8 pour 3 CPU réels : les tâches
+      # du lab attendent surtout les E/S), pas des cœurs physiques.
       YARN-SITE.XML_yarn.nodemanager.resource.memory-mb: "${NM_MEMORY_MB:-4096}"
       YARN-SITE.XML_yarn.nodemanager.resource.cpu-vcores: "${NM_VCORES:-8}"
     depends_on:
@@ -97,11 +189,15 @@ services:
     build: ./hadoop
     hostname: historyserver
     container_name: historyserver
+    cpus: 0.5
+    mem_limit: 768m
     command: ["mapred", "historyserver"]
     ports:
       - "19888:19888"
     env_file:
       - ./hadoop/config
+    environment:
+      HADOOP_HEAPSIZE_MAX: "384m"
     depends_on:
       namenode:
         condition: service_healthy
@@ -115,14 +211,19 @@ services:
       retries: 30
       start_period: 30s
 
-  # Service one-shot : dépose le tarball Tez sur HDFS puis s'arrête
+  # Service one-shot : attend la sortie du safe mode, dépose le tarball Tez
+  # sur HDFS, prépare les répertoires partagés, puis s'arrête
   tez-init:
     build: ./hadoop
     hostname: tez-init
     container_name: tez-init
+    cpus: 1.0
+    mem_limit: 768m
     command: ["/bin/bash", "/opt/init-tez.sh"]
     env_file:
       - ./hadoop/config
+    environment:
+      HADOOP_HEAPSIZE_MAX: "256m"
     volumes:
       - ./hadoop/init-tez.sh:/opt/init-tez.sh:ro
     depends_on:
@@ -132,6 +233,7 @@ services:
 
   # ══════════════════════════════════════════════════════════════════════════
   # Hive (image officielle apache/hive) — metastore + hiveserver2
+  # Tas fixés par SERVICE_OPTS (-Xmx) : plafond = tas + 50 à 75 %.
   # ══════════════════════════════════════════════════════════════════════════
 
   metastore:
@@ -139,6 +241,8 @@ services:
     image: hdd-lab/hive-fixed:4.1.0
     hostname: metastore
     container_name: metastore
+    cpus: 1.0
+    mem_limit: 1g
     environment:
       SERVICE_NAME: metastore
       SERVICE_OPTS: -Xmx512m
@@ -160,6 +264,10 @@ services:
     image: hdd-lab/hive-fixed:4.1.0
     hostname: hiveserver2
     container_name: hiveserver2
+    # Compilation des requêtes et client Tez ; les tâches Tez elles-mêmes
+    # tournent dans le nodemanager.
+    cpus: 2.0
+    mem_limit: 1792m
     environment:
       SERVICE_NAME: hiveserver2
       IS_RESUME: "true"
@@ -198,11 +306,15 @@ services:
     image: zookeeper:3.8.4
     container_name: zookeeper
     hostname: zookeeper
+    cpus: 0.5
+    mem_limit: 512m
     ports:
       - "2181:2181"
     environment:
       # ruok : healthcheck ; srvr/stat/mntr : page "ZooKeeper dump" de l'UI HBase
       ZOO_4LW_COMMANDS_WHITELIST: "ruok,srvr,stat,mntr"
+      # Tas du serveur en Mo (1000 par défaut, surdimensionné pour l'atelier)
+      ZK_SERVER_HEAP: "256"
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep imok"]
       interval: 5s
@@ -215,6 +327,8 @@ services:
     image: hdd-lab/hive-fixed:4.1.0
     container_name: tezam
     hostname: tezam
+    cpus: 1.0
+    mem_limit: 1536m
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -241,6 +355,10 @@ services:
     build: ./hive
     image: hdd-lab/hive-fixed:4.1.0
     container_name: llapdaemon
+    # LLAP_MEMORY_MB (1 Go) + marge pour la mémoire hors tas du démon
+    cpus: 2.0
+    cpu_shares: 512
+    mem_limit: 2g
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -265,6 +383,8 @@ services:
     image: hdd-lab/hive-fixed:4.1.0
     hostname: hiveserver2-llap
     container_name: hiveserver2-llap
+    cpus: 1.0
+    mem_limit: 1536m
     environment:
       SERVICE_NAME: hiveserver2
       IS_RESUME: "true"
@@ -304,6 +424,9 @@ services:
     image: hdd-lab/hive-fixed:4.1.0
     container_name: lab-init
     hostname: lab-init
+    # Clients hdfs et beeline uniquement (tas JVM par défaut : 1/4 du plafond)
+    cpus: 1.0
+    mem_limit: 1g
     entrypoint: ["bash", "/opt/scripts/lab-init.sh"]
     volumes:
       - ./hive-conf:/hive_custom_conf:ro
@@ -317,6 +440,8 @@ services:
   # ══════════════════════════════════════════════════════════════════════════
   # Apache Spark 4.0.4 — cluster "standalone" (profils : spark, zeppelin, full)
   # Image : spark/Dockerfile (cible "spark"), catalogue = metastore Hive partagé
+  # SPARK_DAEMON_MEMORY : tas des démons (master, worker, history), pas des
+  # exécuteurs (spark.executor.memory = 1g, spark/conf/spark-defaults.conf).
   # ══════════════════════════════════════════════════════════════════════════
 
   spark-master:
@@ -328,6 +453,8 @@ services:
     image: hdd-lab/spark:4.0.4
     container_name: spark-master
     hostname: spark-master
+    cpus: 0.5
+    mem_limit: 768m
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master",
               "--host", "spark-master", "--port", "7077", "--webui-port", "8080"]
     environment:
@@ -356,6 +483,14 @@ services:
     image: hdd-lab/spark:4.0.4
     container_name: spark-worker
     hostname: spark-worker
+    # Les exécuteurs Spark tournent DANS ce conteneur : démon (512m) + 3 Go
+    # d'exécuteurs (--memory, soit 3 exécuteurs de 1 Go) + mémoire hors tas
+    # des exécuteurs (~400 Mo chacun) + processus Python de PySpark.
+    # --cores 4 : cœurs logiques offerts aux applications (2 par application
+    # avec spark.cores.max = 2), exécutés sur 3 CPU réels au plus.
+    cpus: 3.0
+    cpu_shares: 512
+    mem_limit: 5g
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker",
               "--cores", "4", "--memory", "3g", "--webui-port", "8081",
               "spark://spark-master:7077"]
@@ -382,6 +517,8 @@ services:
     image: hdd-lab/spark:4.0.4
     container_name: spark-history
     hostname: spark-history
+    cpus: 0.5
+    mem_limit: 768m
     command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.history.HistoryServer"]
     environment:
       SPARK_DAEMON_MEMORY: 512m
@@ -410,6 +547,24 @@ services:
     image: hdd-lab/zeppelin:0.12.1
     container_name: zeppelin
     hostname: zeppelin
+    # Contient le serveur Zeppelin (768 Mo de tas), le driver Spark (%spark,
+    # spark.driver.memory = 1g), une JVM de 512 Mo par interpréteur utilisé
+    # (%hive, %impala, %sh, %python...) et les clients lancés depuis %sh
+    # (javac, hadoop jar, pig, hbase shell).
+    cpus: 2.0
+    mem_limit: 6g
+    environment:
+      # Défauts Zeppelin : 1 Go pour le serveur et 1 Go par interpréteur.
+      # ZEPPELIN_INTP_MEM ne s'applique pas au driver Spark.
+      # zeppelin/conf/zeppelin-env.sh ne garde ses propres valeurs que si
+      # ces variables sont absentes.
+      ZEPPELIN_MEM: "-Xms256m -Xmx768m"
+      ZEPPELIN_INTP_MEM: "-Xms128m -Xmx512m"
+      # Clients lancés depuis %sh : hdfs, yarn, hadoop jar (TP1, TP2, TP4)...
+      HADOOP_HEAPSIZE_MAX: "512m"
+      # ... et pig (TP4), dont le script fixe sinon -Xmx1000m (valeur en Mo).
+      # Le client HBase (hbase shell, TP3) a déjà 512 Mo (hbase-env.sh de l'image).
+      PIG_HEAPSIZE: "512"
     ports:
       - "8082:8082"   # UI Zeppelin
       - "4040:4040"   # UI du driver Spark lancé par Zeppelin (quand il tourne)
@@ -436,6 +591,7 @@ services:
   # ══════════════════════════════════════════════════════════════════════════
   # Apache HBase 2.6.7 (profils : hbase, full) — données sur HDFS, ZooKeeper
   # partagé avec le bonus LLAP. Image : hbase/Dockerfile
+  # HBASE_HEAPSIZE fixe le -Xmx de chaque démon (et du shell dans hbase-init).
   # ══════════════════════════════════════════════════════════════════════════
 
   hbase-master:
@@ -444,6 +600,8 @@ services:
     image: hdd-lab/hbase:2.6.7
     container_name: hbase-master
     hostname: hbase-master
+    cpus: 1.0
+    mem_limit: 1g
     # Nom d'hôte annoncé explicite (hbase.master.hostname ; côté RegionServer :
     # hbase.unsafe.regionserver.hostname, nom de la clé depuis HBase 2.4) : sans
     # lui, HBase utiliserait le nom DNS inverse fourni par Docker
@@ -476,6 +634,9 @@ services:
     image: hdd-lab/hbase:2.6.7
     container_name: hbase-regionserver
     hostname: hbase-regionserver
+    # Tas (memstore + block cache) + tampons réseau hors tas
+    cpus: 1.5
+    mem_limit: 1280m
     command: ["hbase", "regionserver", "-Dhbase.unsafe.regionserver.hostname=hbase-regionserver", "start"]
     environment:
       HBASE_HEAPSIZE: 768m
@@ -499,6 +660,8 @@ services:
     image: hdd-lab/hbase:2.6.7
     container_name: hbase-thrift
     hostname: hbase-thrift
+    cpus: 0.5
+    mem_limit: 512m
     command: ["hbase", "thrift", "start", "-p", "9090", "--infoport", "9095"]
     environment:
       HBASE_HEAPSIZE: 256m
@@ -522,7 +685,11 @@ services:
     image: hdd-lab/hbase:2.6.7
     container_name: hbase-init
     hostname: hbase-init
+    cpus: 1.0
+    mem_limit: 768m
     command: ["bash", "/opt/hbase-scripts/init-hbase.sh"]
+    environment:
+      HBASE_HEAPSIZE: 384m
     # Scripts montés (ils sont aussi copiés dans l'image) : une modification
     # s'applique par « docker compose up -d hbase-init », sans reconstruire
     # l'image HBase ni redémarrer le master et le RegionServer.
@@ -546,6 +713,9 @@ services:
     image: apache/impala:4.5.2-statestored
     container_name: statestored
     hostname: statestored
+    # Démon C++ léger (diffusion des mises à jour du catalogue)
+    cpus: 0.5
+    mem_limit: 384m
     command: ["-redirect_stdout_stderr=false", "-logtostderr"]
     ports:
       - "25010:25010"
@@ -563,6 +733,9 @@ services:
     image: apache/impala:4.5.2-catalogd
     container_name: catalogd
     hostname: catalogd
+    # Démon C++ + JVM embarquée (-Xmx1g)
+    cpus: 1.0
+    mem_limit: 1536m
     command: ["-redirect_stdout_stderr=false", "-logtostderr"]
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
@@ -595,6 +768,10 @@ services:
     image: hdd-lab/impalad:4.5.2
     container_name: impalad
     hostname: impalad
+    # Plafond = -mem_limit (2g, JVM comprise) + 512 Mo de mémoire non suivie
+    # par Impala. Garder mem_limit du conteneur > -mem_limit si l'un change.
+    cpus: 2.0
+    mem_limit: 2560m
     command: ["-redirect_stdout_stderr=false", "-logtostderr", "-mem_limit=2g"]
     environment:
       # Le tas Java est compté dans mem_limit (-mem_limit_includes_jvm=true)
@@ -624,6 +801,10 @@ services:
     image: postgres:15-alpine
     container_name: hue-db
     hostname: hue-db
+    # Base de quelques Mo (sessions, requêtes enregistrées) : réglages
+    # PostgreSQL par défaut (shared_buffers = 128 Mo)
+    cpus: 0.5
+    mem_limit: 384m
     environment:
       POSTGRES_USER: hue
       POSTGRES_PASSWORD: hue
@@ -644,6 +825,10 @@ services:
     image: hdd-lab/hue:4.11.0
     container_name: hue
     hostname: hue
+    # Serveur web Python (Django) : la mémoire croît avec le nombre de
+    # sessions ouvertes (un stagiaire = une session)
+    cpus: 1.0
+    mem_limit: 1536m
     environment:
       # Compte principal : hue / hue, administrateur (accès complet).
       # C'est l'utilisateur interne de Hue, activé au démarrage (hue/atelier_hue_user.py).
