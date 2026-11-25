@@ -1,4 +1,4 @@
-## HDD — Hand-labs de la formation ORSYS « Hadoop, développement »
+# HDD — Hand-labs de la formation ORSYS « Hadoop, développement »
 
 Environnement Docker Compose prêt à l'emploi pour réaliser les **travaux pratiques de la formation HDD** (3 jours, 21 h) : un cluster Hadoop complet sur le poste du stagiaire, les jeux de données, le code des TP et les **notebooks Zeppelin** (énoncés et corrigés).
 
@@ -47,12 +47,6 @@ La pile est reprise du dépôt [crystalloide/BD540](https://github.com/crystallo
 - ~25 Go d'espace disque. Premier build : 15 à 30 minutes (téléchargements Docker Hub, miroirs Apache, Maven Central).
 - Ports libres : `9870 9864 8088 8042 19888 10000 10002 8080 8081 18080 8082 4040 2181 16010 16030 9090 9095 21050 25000 25010 25020 8888`.
 
-## Pré-requis Maven
-
-```bash
-sudo apt install maven
-```
-
 ## Démarrage
 
 ```bash
@@ -66,7 +60,7 @@ cd HDD
 docker compose --profile full up -d --build
 ```
 ```bash
-# Option n°2 : pour lancer une version économe en ressources
+# Option n°1 2 : pour lancer une version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
 
