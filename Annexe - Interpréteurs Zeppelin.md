@@ -2,15 +2,16 @@ Tous les interpréteurs dont les notebooks des TP ont besoin sont déjà configu
 
 Le script fourni fait la vérification en conditions réelles.
 
-Interpréteur	Réglage	Utilisé par
-%hive	HiveServer2, jdbc:hive2://hiveserver2:10000/default	TP1, TP3, TP4, TP5
-%hbase	shell HBase 2.6.7, /opt/hbase	TP3, exercices HBase
-%spark.pyspark, %spark.sql	spark://spark-master:7077, catalogue Hive partagé	TP5
-%impala	jdbc:hive2://impalad:21050/default;auth=noSasl	TP3, TP4, TP5
-%sh	clients hdfs, yarn, pig, hbase, javac	tous les TP
-%python	Python 3 avec happybase	TP3
-%md	créé automatiquement par Zeppelin	tous
-%file, %java	WebHDFS, JDK 17	démo
+| Interpréteur | Réglage | Utilisé par |
+|---|---|---|
+| `%hive` | HiveServer2, `jdbc:hive2://hiveserver2:10000/default` | TP1, TP3, TP4, TP5 |
+| `%hbase` | shell HBase 2.6.7, `/opt/hbase` | TP3, exercices HBase |
+| `%spark.pyspark`, `%spark.sql` | `spark://spark-master:7077`, catalogue Hive partagé | TP5 |
+| `%impala` | `jdbc:hive2://impalad:21050/default;auth=noSasl` | TP3, TP4, TP5 |
+| `%sh` | clients hdfs, yarn, pig, hbase, javac | tous les TP |
+| `%python` | Python 3 avec happybase | TP3 |
+| `%md` | créé automatiquement par Zeppelin | tous |
+| `%file`, `%java` | WebHDFS, JDK 17 | démo |
 
 Points à connaître :
 - %md n'est pas dans interpreter.json : Zeppelin crée au démarrage chaque interpréteur installé qui n'y figure pas. C'est ce mécanisme qui fait aussi fonctionner %md dans BD540.
