@@ -24,11 +24,14 @@ Points à connaître :
 ```bash
 cd ~/HDD
 ```
+
+```bash
 bash scripts/check_interpreteurs.sh            # présence, réglages et un paragraphe exécuté par interpréteur (1 à 3 min)
 ```
+
 ```bash
 bash scripts/check_interpreteurs.sh --rapide   # présence et réglages seulement
-
+```
 
 Ce qu'il fait : il vérifie que chaque interpréteur existe et a le bon réglage, puis exécute un paragraphe de test pour chacun, par exemple SELECT 'OK-hive', list en HBase ou spark.range(5).count(). Il passe par une note temporaire, supprimée à la fin.
 Profils non démarrés : les interpréteurs dont le service ne tourne pas (HBase ou Impala, par exemple) sont ignorés.
