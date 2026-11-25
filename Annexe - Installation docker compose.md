@@ -57,33 +57,33 @@ docker version
 
 Affichage : 
 
-	Client: Docker Engine - Community
-	 Version:           29.8.1
-	 API version:       1.56
-	 Go version:        go1.26.8
-	 Git commit:        4a63305
-	 Built:             Tue Sep 15 16:25:42 2026
-	 OS/Arch:           linux/amd64
-	 Context:           default
+Client: Docker Engine - Community
+ Version:           29.10.1
+ API version:       1.57
+ Go version:        go1.27.4
+ Git commit:        c48360f
+ Built:             Tue Nov 24 19:44:17 2026
+ OS/Arch:           linux/amd64
+ Context:           default
 
-	Server: Docker Engine - Community
-	 Engine:
-	  Version:          29.8.1
-	  API version:      1.56 (minimum version 1.40)
-	  Go version:       go1.26.8
-	  Git commit:       464cd50
-	  Built:            Tue Sep 15 16:25:42 2026
-	  OS/Arch:          linux/amd64
-	  Experimental:     false
-	 containerd:
-	  Version:          v2.3.5
-	  GitCommit:        1294c24a7da8e5a793ed378161673abe94118892
-	 runc:
-	  Version:          1.5.1
-	  GitCommit:        v1.5.1-0-g8f2685a4
-	 docker-init:
-	  Version:          0.19.0
-	  GitCommit:        de40ad0
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.10.1
+  API version:      1.57 (minimum version 1.40)
+  Go version:       go1.27.4
+  Git commit:       54cd494
+  Built:            Tue Nov 24 19:44:40 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.4.2
+  GitCommit:        b7a25261e029d68978bbf290df0a62fc819b3c51
+ runc:
+  Version:          1.5.3
+  GitCommit:        v1.5.3-0-g46365c62
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
   
   
 ####  Vérifions : 
@@ -93,4 +93,4 @@ docker compose version
 ```
 
 Affichage : 
-	Docker Compose version v5.5.1
+	Docker Compose version v5.8.0
