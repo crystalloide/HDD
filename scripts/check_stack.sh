@@ -4,7 +4,8 @@
 # À exécuter DEPUIS LA MACHINE HÔTE, une fois "docker compose ... up -d" terminé
 # (comptez 3 à 5 minutes après le démarrage pour le profil full) :
 #   bash scripts/check_stack.sh             # vérifications rapides
-#   bash scripts/check_stack.sh --complet   # + un vrai job MapReduce soumis depuis Zeppelin (~1 min)
+#   bash scripts/check_stack.sh --complet   # + un paragraphe par interpréteur Zeppelin et un vrai
+#                                           #   job MapReduce soumis depuis Zeppelin (2 à 4 min)
 # Chaque composant non démarré (profil non activé) est simplement ignoré.
 # =============================================================================
 set -u
@@ -73,8 +74,8 @@ echo "== Zeppelin =="
 if running zeppelin; then
   check "Zeppelin : API REST (port 8082)" \
     docker exec zeppelin curl -fs http://localhost:8082/api/version
-  check "Zeppelin : interpréteurs spark, hive, impala, sh, python déclarés" \
-    bash -c "docker exec zeppelin curl -fs http://localhost:8082/api/interpreter/setting | python3 -c 'import json,sys; names={s[\"name\"] for s in json.load(sys.stdin)[\"body\"]}; missing={\"spark\",\"hive\",\"impala\",\"sh\",\"python\",\"md\"}-names; print(\"manquants:\", missing); sys.exit(1 if missing else 0)'"
+  check "Zeppelin : interpréteurs sh, hive, impala, hbase, spark, python, md, file, java déclarés et réglés" \
+    bash "$(dirname "$0")/check_interpreteurs.sh" --rapide
   check "Zeppelin : client HDFS disponible pour %sh" \
     docker exec zeppelin hdfs dfs -ls /user/data
   check "Zeppelin : sources des TP (/opt/tp) et données HDD (/opt/data/hdd)" \
@@ -86,6 +87,8 @@ if running zeppelin; then
   check "Zeppelin : Apache Pig installé (TP4)" \
     bash -c "docker exec zeppelin bash -c 'command -v pig && pig -version 2>&1 | grep -i \"apache pig\"'"
   if [ "${COMPLET}" = 1 ]; then
+    check "Zeppelin : un paragraphe exécuté par interpréteur (scripts/check_interpreteurs.sh)" \
+      bash "$(dirname "$0")/check_interpreteurs.sh"
     check "MapReduce : job de test (pi) soumis depuis Zeppelin, terminé SUCCEEDED" \
       bash -c "docker exec zeppelin bash -c 'yarn jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar pi 2 100 2>&1' | grep -q 'Estimated value of Pi'"
   fi
