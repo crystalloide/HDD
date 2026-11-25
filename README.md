@@ -68,6 +68,8 @@ Suivre l'initialisation, puis attendre que les services soient `healthy` (3 à 5
 
 ```bash
 docker compose logs tez-init          # doit finir par « Tez-Init : TERMINÉ avec succès ! »
+```
+```bash
 docker compose --profile full ps
 ```
 ```bash
