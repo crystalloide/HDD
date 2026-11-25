@@ -74,6 +74,14 @@ YARN-SITE.XML_yarn.scheduler.maximum-allocation-mb=4096
 YARN-SITE.XML_yarn.scheduler.minimum-allocation-mb=256
 YARN-SITE.XML_yarn.scheduler.maximum-allocation-vcores=8
 
+# Port fixe du NodeManager (par défaut : port aléatoire). Le nœud garde ainsi le
+# même identifiant (nodemanager:45454) quand son conteneur est recréé (TP2,
+# NM_MEMORY_MB) : le ResourceManager remplace l'ancien nœud au lieu d'en compter
+# un de plus. Avec un port aléatoire, l'ancien nœud restait déclaré RUNNING
+# jusqu'à son expiration (10 min) et la capacité du cluster s'additionnait
+# (4096 + 2048 + 4096 = 10240 Mo après les étapes 3 et 4 du TP2).
+YARN-SITE.XML_yarn.nodemanager.address=0.0.0.0:45454
+
 # Agrégation des logs applicatifs sur HDFS : permet ensuite
 # `yarn logs -applicationId <id>` (ou `docker exec resourcemanager yarn logs
 # -applicationId <id>`) au lieu d'aller chercher les logs à la main dans le
@@ -107,7 +115,7 @@ CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.queue-mappings-override.enable=fa
 # Le TP ajoute la file à chaud (tp/tp2-yarn/ajouter_file_dev.sh). Pour la garder
 # après une recréation du ResourceManager : remplacer la ligne
 # « ...root.queues=default » ci-dessus par celle-ci, décommenter le bloc, puis
-#   docker compose up -d --force-recreate resourcemanager
+#   docker compose up -d --no-deps --force-recreate resourcemanager
 #CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.queues=default,dev
 #CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.default.capacity=70
 #CAPACITY-SCHEDULER.XML_yarn.scheduler.capacity.root.dev.capacity=30

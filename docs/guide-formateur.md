@@ -61,7 +61,7 @@ Distribuer les **énoncés** (*1 - Enonces*) ; les **corrigés** (*2 - Corriges*
 ### TP2 — YARN
 
 - Deux actions se font **depuis l'hôte** (🖥️) : recréer le NodeManager avec `NM_MEMORY_MB`, puis `bash tp/tp2-yarn/ajouter_file_dev.sh`. Prévoir un terminal à côté du navigateur.
-- **Remettre la capacité d'origine** après l'étape 4 (`docker compose --profile full up -d nodemanager`) : avec 2048 Mo, les sessions Tez de Hive se partagent très peu de place.
+- **Remettre la capacité d'origine** après l'étape 4 (`docker compose --profile full up -d --no-deps nodemanager`) : avec 2048 Mo, les sessions Tez de Hive se partagent très peu de place.
 - Recréer le NodeManager interrompt les sessions Tez en cours (Hue, `%hive`) : elles se rouvrent à la requête suivante.
 - Valeurs attendues (NodeManager à 4096 Mo / 8 vcores, AM 512 Mo) : 7 maps simultanés avec des maps de 512 Mo, 3 avec 1024 Mo, 3 avec un NodeManager à 2048 Mo, 3 dans la file `dev` (plafond 50 %). En version légère (3072 Mo / 4 vcores, les vcores limitent) : 3, 2, 3 et 1.
 - Avant les mesures, arrêter les sessions Tez ouvertes par Hue ou `%hive`, qui occupent des conteneurs : `yarn application -list`, puis `yarn application -kill <id>` (ou attendre 5 min d'inactivité).
