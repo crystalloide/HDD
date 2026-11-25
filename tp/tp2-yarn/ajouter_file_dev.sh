@@ -22,7 +22,7 @@ if [ "${1:-}" = "--retirer" ]; then
   docker exec resourcemanager bash -c "sed -i 's#<name>yarn.scheduler.capacity.root.dev.state</name><value>RUNNING#<name>yarn.scheduler.capacity.root.dev.state</name><value>STOPPED#' ${CONF}"
   docker exec resourcemanager yarn rmadmin -refreshQueues
   echo "File dev arrêtée. Recréer le conteneur pour revenir à la configuration d'origine :"
-  echo "  docker compose up -d --force-recreate resourcemanager"
+  echo "  docker compose up -d --no-deps --force-recreate resourcemanager"
   exit 0
 fi
 

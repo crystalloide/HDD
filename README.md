@@ -1,10 +1,6 @@
-## HDD - Hand-labs de la formation « Hadoop, développement »
+# HDD — Hand-labs de la formation ORSYS « Hadoop, développement »
 
-Environnement Docker Compose prêt à l'emploi pour réaliser les **travaux pratiques de la formation HDD** (3 jours, 21 h) : 
-- un cluster Hadoop complet sur le poste du stagiaire
-- les jeux de données
-- le code des TP
-- les **notebooks Zeppelin** (énoncés et corrigés).
+Environnement Docker Compose prêt à l'emploi pour réaliser les **travaux pratiques de la formation HDD** (3 jours, 21 h) : un cluster Hadoop complet sur le poste du stagiaire, les jeux de données, le code des TP et les **notebooks Zeppelin** (énoncés et corrigés).
 
 | TP | Programme HDD | Outils | Notebook |
 |---|---|---|---|
@@ -64,7 +60,7 @@ cd HDD
 docker compose --profile full up -d --build
 ```
 ```bash
-# Option n°2 : pour lancer une version économe en ressources
+# Option n°1 2 : pour lancer une version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
 
@@ -198,6 +194,8 @@ docker compose --profile full rm -sf zeppelin && docker volume rm hdd-lab_zeppel
 docker compose --profile full up -d --build zeppelin
 ```
 
+> **HDFS n'est pas sur un volume Docker.** Recréer `namenode` ou `datanode` vide HDFS ; `tez-init` et `lab-init` remettent les répertoires et les données de démonstration, mais les données des TP sont perdues. Compose recrée un conteneur dès que sa configuration change : après une mise à jour de `hadoop/config` (partagé par tous les services Hadoop), un `docker compose --profile full up -d` recrée donc toute la partie Hadoop. Pour ne recréer qu'un service, ajouter `--no-deps` (exemple : `docker compose --profile full up -d --no-deps nodemanager`).
+
 HDFS n'a pas de volume persistant : recréer le conteneur `namenode` efface les données des TP (le TP2 ne recrée que le `nodemanager`).
 
 ## Dépannage
@@ -205,7 +203,7 @@ HDFS n'a pas de volume persistant : recréer le conteneur `namenode` efface les 
 | Symptôme | Cause probable / solution |
 |---|---|
 | `yarn jar` depuis Zeppelin reste en `LocalJobRunner` (`job_local...`) | `/opt/hadoop-conf/mapred-site.xml` absent : image Zeppelin ancienne. `docker compose --profile full up -d --build zeppelin` |
-| Job MapReduce bloqué en `ACCEPTED` | ressources YARN prises par des sessions Tez (Hue, Zeppelin `%hive`) ou NodeManager réduit (TP2). `yarn application -list`, `yarn application -kill <id>`, ou remettre la capacité : `docker compose --profile full up -d nodemanager` |
+| Job MapReduce bloqué en `ACCEPTED` | ressources YARN prises par des sessions Tez (Hue, Zeppelin `%hive`) ou NodeManager réduit (TP2). `yarn application -list`, `yarn application -kill <id>`, ou remettre la capacité : `docker compose --profile full up -d --no-deps nodemanager` |
 | `Permission denied: user=root ... inode="/"` | création d'un répertoire à la racine HDFS : utiliser `/data/...` (ouvert) ou le superutilisateur (`HADOOP_USER_NAME=hadoop`) |
 | `Permission denied` sur `/data/referentiel/...` pour Hive, Impala ou Spark | ACL du compte de service manquante (TP4 étape 2) : `bash /opt/tp/commun/preparer_referentiel.sh` depuis Zeppelin remet la zone en état |
 | `pig: command not found` | Pig n'a pas pu être téléchargé au build (miroirs Apache) : voir la sortie du build, puis `docker compose --profile full build --no-cache zeppelin` |

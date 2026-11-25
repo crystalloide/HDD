@@ -163,7 +163,7 @@ services:
     # pmem-check est désactivé (./hadoop/config) : c'est ce plafond qui borne
     # réellement la mémoire des tâches.
     # Si NM_MEMORY_MB est augmenté, augmenter NM_MEM_LIMIT d'autant :
-    #   NM_MEMORY_MB=6144 NM_MEM_LIMIT=7g docker compose up -d nodemanager
+    #   NM_MEMORY_MB=6144 NM_MEM_LIMIT=7g docker compose up -d --no-deps nodemanager
     cpus: 3.0
     cpu_shares: 512
     mem_limit: ${NM_MEM_LIMIT:-5g}
@@ -175,7 +175,7 @@ services:
     environment:
       HADOOP_HEAPSIZE_MAX: "384m"
       # Capacité annoncée à YARN par le NodeManager, réglable au lancement
-      # (TP YARN) :  NM_MEMORY_MB=2048 docker compose up -d nodemanager
+      # (TP YARN) :  NM_MEMORY_MB=2048 docker compose up -d --no-deps nodemanager
       # vcores : unités de comptabilité YARN (8 pour 3 CPU réels : les tâches
       # du lab attendent surtout les E/S), pas des cœurs physiques.
       YARN-SITE.XML_yarn.nodemanager.resource.memory-mb: "${NM_MEMORY_MB:-4096}"

@@ -134,7 +134,7 @@ services:
       # Sans ces deux clés, YARN annonce 8 Go / 8 vcores (valeurs par défaut),
       # bien au-delà du plafond du conteneur (pmem-check est désactivé dans
       # ./hadoop/config : YARN ne tuerait pas lui-même un conteneur trop gros).
-      # Réglables au lancement (TP YARN) : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml up -d nodemanager
+      # Réglables au lancement (TP YARN) : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml up -d --no-deps nodemanager
       # vcores : unités de comptabilité YARN (4 pour 2 CPU réels : les tâches du lab attendent surtout les E/S)
       YARN-SITE.XML_yarn.nodemanager.resource.memory-mb: "${NM_MEMORY_MB:-3072}"
       YARN-SITE.XML_yarn.nodemanager.resource.cpu-vcores: "${NM_VCORES:-4}"

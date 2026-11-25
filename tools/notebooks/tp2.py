@@ -164,11 +164,11 @@ md("""
 La capacité annoncée par le NodeManager est lue **au démarrage** du conteneur : elle est injectée par Docker Compose (variable `NM_MEMORY_MB`, valeur par défaut 4096). Depuis un terminal de l'hôte, à la racine du dépôt :
 
 ```bash
-NM_MEMORY_MB=2048 docker compose --profile full up -d nodemanager
-# version légère : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml --profile full up -d nodemanager
+NM_MEMORY_MB=2048 docker compose --profile full up -d --no-deps nodemanager
+# version légère : NM_MEMORY_MB=2048 docker compose -f docker-compose-light.yml --profile full up -d --no-deps nodemanager
 ```
 
-`docker compose restart` ne suffirait pas : il redémarre le même conteneur, avec l'ancienne configuration. `up -d` **recrée** le conteneur avec la nouvelle valeur. Les applications YARN en cours sur ce nœud (sessions Tez de Hue ou Zeppelin) sont interrompues.
+`docker compose restart` ne suffirait pas : il redémarre le même conteneur, avec l'ancienne configuration. `up -d` **recrée** le conteneur avec la nouvelle valeur. `--no-deps` limite l'opération au NodeManager : sans lui, Compose recréerait aussi les services dont il dépend (NameNode, ResourceManager) si leur configuration avait changé, et HDFS, qui n'est pas sur un volume, repartirait vide. Les applications YARN en cours sur ce nœud (sessions Tez de Hue ou Zeppelin) sont interrompues.
 
 Attendez une trentaine de secondes, puis vérifiez la nouvelle capacité.
 """, title="Étape 3"),
@@ -177,6 +177,8 @@ code("sh", """
 curl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c "
 import json, sys; m = json.load(sys.stdin)['clusterMetrics']
 print(f\\"mémoire totale : {m['totalMB']} Mo | vcores : {m['totalVirtualCores']} | nœuds actifs : {m['activeNodes']}\\")"
+echo "--- nœuds connus du ResourceManager (un seul attendu : nodemanager:45454)"
+yarn node -list -all 2>/dev/null | grep -E 'Node-Id|nodemanager'
 """, title="3.1 Vérifier la nouvelle capacité"),
 
 md("""
@@ -202,7 +204,7 @@ md("""
 🖥️ **Remettre la capacité d'origine** avant la suite (depuis l'hôte) :
 
 ```bash
-docker compose --profile full up -d nodemanager
+docker compose --profile full up -d --no-deps nodemanager
 ```
 
 C : (2048 − 512) / 512 = 3 maps simultanés : la mémoire du nœud borne le nombre de conteneurs.
@@ -289,7 +291,13 @@ ok () { printf "  [ OK ] %s\\n" "$1"; }; ko () { printf "  [ KO ] %s\\n" "$1"; }
 a=$(grep 'maps simultanés' /tmp/hdd/tp2/A_map512.mesure 2>/dev/null | grep -o '[0-9]*' | head -1)
 b=$(grep 'maps simultanés' /tmp/hdd/tp2/B_map1024.mesure 2>/dev/null | grep -o '[0-9]*' | head -1)
 [ -n "$a" ] && [ -n "$b" ] && [ "$b" -lt "$a" ] && ok "maps simultanés : $a (512 Mo) > $b (1024 Mo)" || ko "mesures A et B (étape 2)"
-grep -q 'file YARN *: dev' /tmp/hdd/tp2/D_file_dev.mesure 2>/dev/null && ok "job exécuté dans la file dev" || ko "file dev (étapes 5 et 6)"
+# Selon l'API, YARN 3.4 note la file par son nom (dev) ou son chemin (root.dev)
+f=$(grep 'file YARN' /tmp/hdd/tp2/D_file_dev.mesure 2>/dev/null | awk -F': ' '{print $2}')
+case "$f" in
+  dev|root.dev) ok "job exécuté dans la file dev ($f)" ;;
+  "") ko "file dev : mesure D absente (étape 6.1 non exécutée, ou job refusé : voir /tmp/hdd/tp2/D_file_dev.log)" ;;
+  *)  ko "file dev : le job de l'étape 6.1 a tourné dans la file « $f » (option -D mapreduce.job.queuename=dev ? étape 5 faite ?)" ;;
+esac
 tues=$(curl -s "http://resourcemanager:8088/ws/v1/cluster/apps?states=FINISHED,FAILED,KILLED" | grep -o 'beyond physical memory' | wc -l)
 [ "$tues" = 0 ] && ok "aucun conteneur tué pour dépassement mémoire" || ko "$tues conteneur(s) tué(s) pour dépassement mémoire"
 total=$(curl -s http://resourcemanager:8088/ws/v1/cluster/metrics | python3 -c "import json,sys; print(json.load(sys.stdin)['clusterMetrics']['totalMB'])")
