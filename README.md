@@ -1,6 +1,10 @@
 ## HDD - Hand-labs de la formation « Hadoop, développement »
 
-Environnement Docker Compose prêt à l'emploi pour réaliser les **travaux pratiques de la formation HDD** (3 jours, 21 h) : un cluster Hadoop complet sur le poste du stagiaire, les jeux de données, le code des TP et les **notebooks Zeppelin** (énoncés et corrigés).
+Environnement Docker Compose prêt à l'emploi pour réaliser les **travaux pratiques de la formation HDD** (3 jours, 21 h) : 
+- un cluster Hadoop complet sur le poste du stagiaire
+- les jeux de données
+- le code des TP
+- les **notebooks Zeppelin** (énoncés et corrigés).
 
 | TP | Programme HDD | Outils | Notebook |
 |---|---|---|---|
