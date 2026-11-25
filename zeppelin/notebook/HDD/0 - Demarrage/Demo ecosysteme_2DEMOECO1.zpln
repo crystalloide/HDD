@@ -47,7 +47,7 @@
     },
     {
       "title": "HDFS (client hdfs dans %sh)",
-      "text": "%sh\n# HDFS : le fichier source de la table externe\nhdfs dfs -ls /user/hadoop/demo/transactions\necho \"--- 5 premières lignes ---\"\nhdfs dfs -cat /user/hadoop/demo/transactions/transactions.csv | head -5",
+      "text": "%sh\n# HDFS : le fichier source de la table externe\nhdfs dfs -ls /user/hadoop/demo/transactions\necho \"--- 5 premières lignes ---\"\n# 2>&1 : sans lui, « cat: Unable to write to output stream » s'affiche quand head\n# s'arrête avant la fin du fichier (message sans gravité)\nhdfs dfs -cat /user/hadoop/demo/transactions/transactions.csv 2>&1 | head -5",
       "user": "anonymous",
       "dateUpdated": "2026-10-02 09:00:21.000",
       "progress": 0,

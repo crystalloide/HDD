@@ -299,7 +299,7 @@ $CRM hdfs dfs -ls {Z}/raffinee/clients {Z}/raffinee/stats_villes
 code("sh", f"""
 CRM="env HADOOP_USER_NAME=crm_admin"
 echo "clients dans le référentiel : $($CRM hdfs dfs -cat {Z}/raffinee/clients/part-* | wc -l)"
-$CRM hdfs dfs -cat {Z}/raffinee/clients/part-* | head -3
+$CRM hdfs dfs -cat {Z}/raffinee/clients/part-* 2>&1 | head -3
 echo "--- statistiques par ville"
 $CRM hdfs dfs -cat {Z}/raffinee/stats_villes/part-* | sort -t';' -k3,3gr | head -5
 echo "--- héritage des ACL par défaut sur un fichier créé par Pig"

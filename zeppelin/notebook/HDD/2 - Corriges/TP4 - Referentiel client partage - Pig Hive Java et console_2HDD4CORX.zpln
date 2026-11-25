@@ -748,7 +748,7 @@
     },
     {
       "title": "5.5 Vérifier le référentiel produit",
-      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\necho \"clients dans le référentiel : $($CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* | wc -l)\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* | head -3\necho \"--- statistiques par ville\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/stats_villes/part-* | sort -t';' -k3,3gr | head -5\necho \"--- héritage des ACL par défaut sur un fichier créé par Pig\"\n$CRM hdfs dfs -getfacl /data/referentiel/clients/raffinee/clients/part-r-00000 2>/dev/null | head -12 || $CRM hdfs dfs -ls /data/referentiel/clients/raffinee/clients",
+      "text": "%sh\nCRM=\"env HADOOP_USER_NAME=crm_admin\"\necho \"clients dans le référentiel : $($CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* | wc -l)\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/clients/part-* 2>&1 | head -3\necho \"--- statistiques par ville\"\n$CRM hdfs dfs -cat /data/referentiel/clients/raffinee/stats_villes/part-* | sort -t';' -k3,3gr | head -5\necho \"--- héritage des ACL par défaut sur un fichier créé par Pig\"\n$CRM hdfs dfs -getfacl /data/referentiel/clients/raffinee/clients/part-r-00000 2>/dev/null | head -12 || $CRM hdfs dfs -ls /data/referentiel/clients/raffinee/clients",
       "user": "anonymous",
       "dateUpdated": "2026-11-23 09:00:00.000",
       "progress": 0,

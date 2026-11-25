@@ -231,7 +231,9 @@ hdfs dfs -rm -r -f -skipTrash /data/out/villes_brut
 yarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\
      /data/raw/clients /data/out/villes_brut 2>&1 | tee /tmp/hdd/tp1/run_brut.log | grep -E 'Submitted application|map [0-9]+% reduce|HDD_|ERROR|Exception'
 echo "--- nombre de « villes » trouvées : $(hdfs dfs -cat /data/out/villes_brut/part-r-* | wc -l)"
-hdfs dfs -cat /data/out/villes_brut/part-r-* | head -12
+# 2>&1 : sans lui, « cat: Unable to write to output stream » s'affiche quand head
+# s'arrête avant la fin du fichier (message sans gravité)
+hdfs dfs -cat /data/out/villes_brut/part-r-* 2>&1 | head -12
 """, title="2.7 Premier essai sur les données brutes"),
 
 md("""
@@ -283,11 +285,11 @@ hdfs dfs -ls /data/clean/clients
 
 code("sh", """
 echo "--- lignes valides (extrait)"
-hdfs dfs -cat /data/clean/clients/part-m-00000 | head -3
+hdfs dfs -cat /data/clean/clients/part-m-00000 2>&1 | head -3
 echo "--- rejets par motif et par fichier"
 hdfs dfs -cat '/data/clean/clients/rejets-m-*' | cut -d';' -f1,2 | sort | uniq -c
 echo "--- exemples"
-hdfs dfs -cat '/data/clean/clients/rejets-m-*' | awk -F';' '!vu[$1]++' | head -5
+hdfs dfs -cat '/data/clean/clients/rejets-m-*' 2>&1 | awk -F';' '!vu[$1]++' | head -5
 """, title="3.5 Examiner les lignes valides et les rejets"),
 
 md("""
@@ -345,7 +347,7 @@ for essai in "sans:false" "avec:true"; do
 done
 echo "--- fichiers produits avec 2 reducers"
 hdfs dfs -ls /data/out/villes_avec
-hdfs dfs -cat /data/out/villes_avec/part-r-00000 | head -3
+hdfs dfs -cat /data/out/villes_avec/part-r-00000 2>&1 | head -3
 """, title="5.1 Comparer sans / avec combiner (2 reducers)",
 enonce="""
 for essai in "sans:false" "avec:true"; do

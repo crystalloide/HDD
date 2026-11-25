@@ -409,7 +409,7 @@
     },
     {
       "title": "2.7 Premier essai sur les données brutes",
-      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/villes_brut\nyarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n     /data/raw/clients /data/out/villes_brut 2>&1 | tee /tmp/hdd/tp1/run_brut.log | grep -E 'Submitted application|map [0-9]+% reduce|HDD_|ERROR|Exception'\necho \"--- nombre de « villes » trouvées : $(hdfs dfs -cat /data/out/villes_brut/part-r-* | wc -l)\"\nhdfs dfs -cat /data/out/villes_brut/part-r-* | head -12",
+      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /data/out/villes_brut\nyarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n     /data/raw/clients /data/out/villes_brut 2>&1 | tee /tmp/hdd/tp1/run_brut.log | grep -E 'Submitted application|map [0-9]+% reduce|HDD_|ERROR|Exception'\necho \"--- nombre de « villes » trouvées : $(hdfs dfs -cat /data/out/villes_brut/part-r-* | wc -l)\"\n# 2>&1 : sans lui, « cat: Unable to write to output stream » s'affiche quand head\n# s'arrête avant la fin du fichier (message sans gravité)\nhdfs dfs -cat /data/out/villes_brut/part-r-* 2>&1 | head -12",
       "user": "anonymous",
       "dateUpdated": "2026-11-23 09:00:00.000",
       "progress": 0,
@@ -669,7 +669,7 @@
     },
     {
       "title": "3.5 Examiner les lignes valides et les rejets",
-      "text": "%sh\necho \"--- lignes valides (extrait)\"\nhdfs dfs -cat /data/clean/clients/part-m-00000 | head -3\necho \"--- rejets par motif et par fichier\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' | cut -d';' -f1,2 | sort | uniq -c\necho \"--- exemples\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' | awk -F';' '!vu[$1]++' | head -5",
+      "text": "%sh\necho \"--- lignes valides (extrait)\"\nhdfs dfs -cat /data/clean/clients/part-m-00000 2>&1 | head -3\necho \"--- rejets par motif et par fichier\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' | cut -d';' -f1,2 | sort | uniq -c\necho \"--- exemples\"\nhdfs dfs -cat '/data/clean/clients/rejets-m-*' 2>&1 | awk -F';' '!vu[$1]++' | head -5",
       "user": "anonymous",
       "dateUpdated": "2026-11-23 09:00:00.000",
       "progress": 0,
@@ -861,7 +861,7 @@
     },
     {
       "title": "5.1 Comparer sans / avec combiner (2 reducers)",
-      "text": "%sh\nfor essai in \"sans:false\" \"avec:true\"; do\n  nom=${essai%%:*}; combiner=${essai##*:}\n  hdfs dfs -rm -r -f -skipTrash /data/out/villes_$nom\n  yarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n       -D hdd.combiner=$combiner -D mapreduce.job.reduces=2 \\\n       -D mapreduce.input.fileinputformat.split.maxsize=262144 \\\n       '/data/clean/clients/part-*' /data/out/villes_$nom > /tmp/hdd/tp1/run_villes_$nom.log 2>&1\n  echo \"combiner $nom : $(grep -E 'HDD_ETAT|HDD_COMPTEURS' /tmp/hdd/tp1/run_villes_$nom.log | tr '\\n' ' ')\"\ndone\necho \"--- fichiers produits avec 2 reducers\"\nhdfs dfs -ls /data/out/villes_avec\nhdfs dfs -cat /data/out/villes_avec/part-r-00000 | head -3",
+      "text": "%sh\nfor essai in \"sans:false\" \"avec:true\"; do\n  nom=${essai%%:*}; combiner=${essai##*:}\n  hdfs dfs -rm -r -f -skipTrash /data/out/villes_$nom\n  yarn jar /tmp/hdd/tp1/clients.jar fr.orsys.hdd.tp1.ClientsParVille \\\n       -D hdd.combiner=$combiner -D mapreduce.job.reduces=2 \\\n       -D mapreduce.input.fileinputformat.split.maxsize=262144 \\\n       '/data/clean/clients/part-*' /data/out/villes_$nom > /tmp/hdd/tp1/run_villes_$nom.log 2>&1\n  echo \"combiner $nom : $(grep -E 'HDD_ETAT|HDD_COMPTEURS' /tmp/hdd/tp1/run_villes_$nom.log | tr '\\n' ' ')\"\ndone\necho \"--- fichiers produits avec 2 reducers\"\nhdfs dfs -ls /data/out/villes_avec\nhdfs dfs -cat /data/out/villes_avec/part-r-00000 2>&1 | head -3",
       "user": "anonymous",
       "dateUpdated": "2026-11-23 09:00:00.000",
       "progress": 0,

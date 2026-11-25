@@ -51,6 +51,10 @@ FROM ${HIVE_METASTORE_CLIENT_IMAGE} AS hive-metastore-client
 #    Central (org.apache.zeppelin:zeppelin-shell:0.12.1) ;
 #  * pilote JDBC Hive 4.1.0 "standalone" (MÊME version que HiveServer2), utilisé
 #    par les interpréteurs %hive et %impala.
+#  * jansi 2.4.0 (version de Hive 4.1.0), absent du pilote "standalone" : la
+#    barre de progression des requêtes Hive dans Zeppelin (InPlaceUpdate) en a
+#    besoin. Sans lui, toute requête qui lance un DAG Tez échoue dans %hive
+#    avec « NoClassDefFoundError: org/fusesource/jansi/Ansi ».
 # -----------------------------------------------------------------------------
 FROM ${MAVEN_IMAGE} AS zeppelin-maven-deps
 WORKDIR /build
@@ -61,9 +65,13 @@ RUN mvn -B -ntp -f /build/pom.xml \
  && mvn -B -ntp -f /build/pom.xml \
         org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
         -Dartifact=org.apache.hive:hive-jdbc:4.1.0:jar:standalone -DoutputDirectory=/build/jdbc \
+ && mvn -B -ntp -f /build/pom.xml \
+        org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
+        -Dartifact=org.fusesource.jansi:jansi:2.4.0 -DoutputDirectory=/build/jdbc \
  && ls -l /build/sh /build/jdbc \
  && test -f /build/sh/zeppelin-shell-0.12.1.jar \
- && test -f /build/jdbc/hive-jdbc-4.1.0-standalone.jar
+ && test -f /build/jdbc/hive-jdbc-4.1.0-standalone.jar \
+ && test -f /build/jdbc/jansi-2.4.0.jar
 
 # -----------------------------------------------------------------------------
 # JDK 17 complet pour l'interpréteur %java de Zeppelin : il compile le code des
@@ -193,9 +201,9 @@ RUN set -eux; \
           "Spark Tutorial/8. PySpark Conda Env in Yarn Mode_2GE79Y5FV.zpln"; \
     ls /opt/zeppelin/interpreter
 
-# Interpréteur %sh (zeppelin-shell 0.12.1 + dépendances) et pilote JDBC Hive 4.1.0
+# Interpréteur %sh (zeppelin-shell 0.12.1 + dépendances), pilote JDBC Hive 4.1.0 et jansi
 COPY --from=zeppelin-maven-deps /build/sh/ /opt/zeppelin/interpreter/sh/
-COPY --from=zeppelin-maven-deps /build/jdbc/hive-jdbc-4.1.0-standalone.jar /opt/zeppelin/interpreter/jdbc/
+COPY --from=zeppelin-maven-deps /build/jdbc/hive-jdbc-4.1.0-standalone.jar /build/jdbc/jansi-2.4.0.jar /opt/zeppelin/interpreter/jdbc/
 # interpreter-setting.json est extrait du jar zeppelin-shell, en ne gardant que
 # %sh (voir zeppelin/build/keep_sh_interpreter.py pour le pourquoi).
 COPY zeppelin/build/keep_sh_interpreter.py /tmp/keep_sh_interpreter.py
