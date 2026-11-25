@@ -33,10 +33,10 @@ bash scripts/check_interpreteurs.sh            # présence, réglages et un para
 bash scripts/check_interpreteurs.sh --rapide   # présence et réglages seulement
 ```
 
-Ce qu'il fait : il vérifie que chaque interpréteur existe et a le bon réglage, puis exécute un paragraphe de test pour chacun, par exemple SELECT 'OK-hive', list en HBase ou spark.range(5).count(). Il passe par une note temporaire, supprimée à la fin.
-Profils non démarrés : les interpréteurs dont le service ne tourne pas (HBase ou Impala, par exemple) sont ignorés.
-
-Si un interpréteur a été supprimé ou modifié dans Zeppelin, le script affiche la commande qui le rétablit : 
+Ce qu'il fait : 
+- il vérifie que chaque interpréteur existe et a le bon réglage, puis exécute un paragraphe de test pour chacun, par exemple SELECT 'OK-hive', list en HBase ou spark.range(5).count(). Il passe par une note temporaire, supprimée à la fin.
+- Profils non démarrés : les interpréteurs dont le service ne tourne pas (HBase ou Impala, par exemple) sont ignorés.
+- Si un interpréteur a été supprimé ou modifié dans Zeppelin, le script affiche la commande qui le rétablit : 
 
 ```bash
 docker compose --profile full up -d --force-recreate zeppelin
