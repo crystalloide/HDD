@@ -49,6 +49,8 @@ check "HDFS : groupes des comptes de test (bob -> marketing)" \
   bash -c "docker exec namenode hdfs groups bob 2>/dev/null | grep -q 'marketing'"
 check "HDFS : répertoires des TP /data et /demo" \
   bash -c "docker exec namenode hdfs dfs -test -d /data && docker exec namenode hdfs dfs -test -d /demo"
+check "HDFS : staging MapReduce ouvert à tous (/tmp/hadoop-yarn/staging en 1777)" \
+  bash -c "docker exec namenode hdfs dfs -stat '%a' /tmp/hadoop-yarn/staging | grep -qx 1777"
 if running historyserver; then
   check "JobHistory Server MapReduce (port 19888)" \
     docker exec historyserver curl -fs http://localhost:19888/ws/v1/history/info

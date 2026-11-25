@@ -71,6 +71,22 @@ hdfs dfs -chmod 1777 /user/hadoop
 hdfs dfs -mkdir -p /tmp/logs
 hdfs dfs -chmod -R 1777 /tmp/logs
 
+# Staging et historique MapReduce (ajout HDD, permissions HDFS actives).
+# Au démarrage, le JobHistory Server crée /tmp/hadoop-yarn/staging/history/done
+# en 770. Si les répertoires parents n'existent pas encore, HDFS les crée avec
+# les mêmes droits (hadoop:supergroup, drwxrwx---) : plus aucun autre compte ne
+# peut alors soumettre de job MapReduce (« Permission denied: user=root,
+# access=EXECUTE, inode="/tmp/hadoop-yarn" »). Ils sont donc créés ici, avant
+# le JobHistory Server (qui attend la fin de tez-init) :
+#  - staging en 1777 : chaque compte y crée staging/<compte>/.staging ;
+#  - done_intermediate en 1777 : l'ApplicationMaster de chaque job y dépose
+#    l'historique, que le JobHistory Server déplace ensuite dans done.
+# chmod sans -R : corrige aussi un HDFS existant (relance de tez-init) sans
+# toucher aux répertoires créés par les comptes.
+hdfs dfs -mkdir -p /tmp/hadoop-yarn/staging/history/done_intermediate
+hdfs dfs -chmod 755 /tmp/hadoop-yarn /tmp/hadoop-yarn/staging/history
+hdfs dfs -chmod 1777 /tmp/hadoop-yarn/staging /tmp/hadoop-yarn/staging/history/done_intermediate
+
 # Répertoires utilisés par les composants ajoutés (Spark, Zeppelin, HBase) :
 #  - /spark-logs : journaux d'événements Spark (spark.eventLog.dir), lus par le
 #    Spark History Server, qui REFUSE de démarrer si ce répertoire n'existe pas ;
@@ -96,7 +112,7 @@ for u in root hue crm_admin alice bob eve; do
   hdfs dfs -chown "${u}" "/user/${u}"
 done
 
-echo "  OK - répertoires créés (/apps/tez, /tmp/tez/staging, /user/hive/warehouse, /user/hadoop, /tmp/logs, /spark-logs, /user/data, /hbase, /data, /demo, /user/<comptes du lab>)"
+echo "  OK - répertoires créés (/apps/tez, /tmp/tez/staging, /user/hive/warehouse, /user/hadoop, /tmp/logs, /tmp/hadoop-yarn/staging, /spark-logs, /user/data, /hbase, /data, /demo, /user/<comptes du lab>)"
 
 # -----------------------------------------------------------------------------
 # 3. Upload du tarball Tez sur HDFS (idempotent)

@@ -13,6 +13,7 @@
 git clone https://github.com/crystalloide/HDD && cd HDD
 docker compose --profile full up -d --build      # 15 à 30 min la première fois
 bash scripts/check_stack.sh --complet             # tout doit être [ OK ]
+                                                  # (inclut scripts/check_interpreteurs.sh : un paragraphe par interpréteur Zeppelin)
 ```
 
 Puis dérouler **une fois chaque notebook corrigé** (*HDD / 2 - Corriges*, *Run all*) sur un poste de référence : c'est le meilleur test de l'environnement. Remettre ensuite les postes à zéro :

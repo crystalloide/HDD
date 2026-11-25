@@ -56,6 +56,47 @@ de l'atelier, à renseigner dans leur réglage : `%cassandra`,
 local par défaut). R n'est pas installé : `%r`, `%ir` et `%spark.r` ne
 s'exécutent pas.
 
+### Interpréteurs utilisés par les TP HDD
+
+| TP | Interpréteurs (hors `%md`) |
+|---|---|
+| TP1 MapReduce | `%sh` (HDFS, `javac`, `yarn jar`), `%hive` (bonus SQL) |
+| TP2 YARN | `%sh` |
+| TP3 HBase | `%hbase`, `%sh` (programmes Java), `%python` (happybase), `%hive`, `%impala` |
+| TP4 Pig / Hive / Java | `%sh` (HDFS, `pig`, Java), `%hive`, `%impala` |
+| TP5 Spark | `%spark.pyspark`, `%spark.sql`, `%sh`, `%hive`, `%impala` |
+| Démarrage, démo | en plus : `%file`, `%java`, `%python.ipython` |
+
+Remarques :
+
+- `%md` n'est pas dans `zeppelin/conf/interpreter.json` : Zeppelin crée au
+  démarrage, avec ses réglages par défaut, chaque interpréteur installé qui
+  n'y figure pas (même chose pour `%jdbc`, `%groovy`, `%angular`...).
+- Zeppelin 0.12 n'a plus d'interpréteur Pig : Pig Latin s'exécute par `%sh`
+  (`pig -x mapreduce script.pig`), comme dans le TP4.
+- `%hbase` lance `hbase shell` pour chaque paragraphe (démarrage de 5 à 15 s)
+  et l'arrête au bout de **60 s** (délai fixé dans le code de Zeppelin) :
+  garder des paragraphes courts, les chargements volumineux passant par Java
+  (`%sh`), comme dans le TP3.
+
+### Contrôle des interpréteurs
+
+```bash
+bash scripts/check_interpreteurs.sh           # présence, réglages et un paragraphe exécuté par interpréteur (1 à 3 min)
+bash scripts/check_interpreteurs.sh --rapide  # présence et réglages seulement
+```
+
+Le script lit les réglages par l'API REST de Zeppelin, puis exécute un
+paragraphe de test par interpréteur dans une note temporaire, supprimée à la
+fin. Un interpréteur dont le service n'est pas démarré est ignoré (`[ -- ]`).
+Un interpréteur supprimé ou déréglé depuis *Settings > Interpreter* se
+rétablit en recréant le conteneur, qui repart de `interpreter.json` (les
+notebooks, dans un volume, sont conservés) :
+
+```bash
+docker compose --profile full up -d --force-recreate zeppelin
+```
+
 Le notebook *HDD / 0 - Demarrage / Demo ecosysteme* contient un exemple `%hbase`,
 `%file`, `%java` et `%python.ipython`. `%python` et `%spark.pyspark` restent
 en mode Python classique, comme dans le TP. Le mode IPython s'utilise
