@@ -68,9 +68,19 @@ hdfs dfs -ls /demo/in
 """, title="4. Déposer un fichier dans HDFS"),
 
 code("sh", """
+# Journal complet dans /tmp/hdd/wordcount.log ; on n'affiche que les lignes utiles.
+mkdir -p /tmp/hdd
 hdfs dfs -rm -r -f -skipTrash /demo/out
 yarn jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar \\
-     wordcount /demo/in /demo/out 2>&1 | grep -E 'Running job|Submitted application|map [0-9]+% reduce|completed successfully|Map input records|Reduce output records|failed'
+     wordcount /demo/in /demo/out > /tmp/hdd/wordcount.log 2>&1
+code=$?
+grep -E 'Submitted application|Running job|map [0-9]+% reduce|completed successfully|failed|Map input records|Reduce output records|ERROR|Exception' /tmp/hdd/wordcount.log
+echo "--- code retour du job : ${code}"
+if [ "${code}" -ne 0 ]; then
+  echo "--- fin du journal (/tmp/hdd/wordcount.log)"
+  tail -25 /tmp/hdd/wordcount.log
+fi
+exit "${code}"
 """, title="5. Lancer wordcount sur YARN"),
 
 code("sh", """

@@ -228,7 +228,7 @@
     },
     {
       "title": "5. Lancer wordcount sur YARN",
-      "text": "%sh\nhdfs dfs -rm -r -f -skipTrash /demo/out\nyarn jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar \\\n     wordcount /demo/in /demo/out 2>&1 | grep -E 'Running job|Submitted application|map [0-9]+% reduce|completed successfully|Map input records|Reduce output records|failed'",
+      "text": "%sh\n# Journal complet dans /tmp/hdd/wordcount.log ; on n'affiche que les lignes utiles.\nmkdir -p /tmp/hdd\nhdfs dfs -rm -r -f -skipTrash /demo/out\nyarn jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar \\\n     wordcount /demo/in /demo/out > /tmp/hdd/wordcount.log 2>&1\ncode=$?\ngrep -E 'Submitted application|Running job|map [0-9]+% reduce|completed successfully|failed|Map input records|Reduce output records|ERROR|Exception' /tmp/hdd/wordcount.log\necho \"--- code retour du job : ${code}\"\nif [ \"${code}\" -ne 0 ]; then\n  echo \"--- fin du journal (/tmp/hdd/wordcount.log)\"\n  tail -25 /tmp/hdd/wordcount.log\nfi\nexit \"${code}\"",
       "user": "anonymous",
       "dateUpdated": "2026-11-23 09:00:00.000",
       "progress": 0,
