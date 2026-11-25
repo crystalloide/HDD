@@ -64,7 +64,7 @@ cd HDD
 docker compose --profile full up -d --build
 ```
 ```bash
-# Option n°1 2 : pour lancer une version économe en ressources
+# Option n°2 : pour lancer une version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
 
