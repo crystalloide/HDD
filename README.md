@@ -76,7 +76,7 @@ docker compose --profile full ps
 bash scripts/check_stack.sh            # chaque ligne doit afficher [ OK ]
 ```
 ```bash
-bash scripts/check_stack.sh --complet  # + un vrai job MapReduce soumis depuis Zeppelin
+bash scripts/check_stack.sh --complet  # + un paragraphe par interpréteur Zeppelin et un vrai job MapReduce
 ```
 
 Les services `tez-init`, `lab-init` et `hbase-init` s'arrêtent d'eux-mêmes (`Exited (0)`) : c'est normal.
@@ -177,6 +177,7 @@ Par rapport au dépôt BD540 :
 | `docker-compose*.yml` | `nodemanager` : capacité réglable par `NM_MEMORY_MB` / `NM_VCORES` ; ports 8042 et 9864 ; montage `./tp` dans Zeppelin ; projet, images et réseau renommés `hdd-lab` | TP2 ; consoles ; sources des TP ; cohabitation avec BD540 |
 | `docker-compose*.yml`, `zeppelin/conf/zeppelin-env.sh` | plafonds `cpus` / `mem_limit` sur chaque service, tas Java alignés (`HADOOP_HEAPSIZE_MAX`, `SERVICE_OPTS`, `HBASE_HEAPSIZE`...), poids CPU réduit pour `nodemanager` et `spark-worker` ; healthchecks NameNode / ResourceManager par curl au lieu d'une JVM cliente ; `ZEPPELIN_MEM` / `ZEPPELIN_INTP_MEM` du compose pris en compte | aucun service ne peut affamer les autres ; redémarrage `stop` / `up` possible sans blocage en safe mode |
 | `scripts/check_stack.sh` | contrôles JobHistory, permissions, groupes, Pig, javac, sources des TP ; option `--complet` | vérification avant la session |
+| `scripts/check_interpreteurs.sh` (nouveau) | présence, réglages et exécution réelle des interpréteurs Zeppelin des TP (`%sh`, `%hive`, `%impala`, `%hbase`, `%spark.pyspark`, `%spark.sql`, `%python`, `%md`, `%file`, `%java`) | vérification avant la session ; voir [docs/composants.md](docs/composants.md) |
 
 ## Réinitialiser
 
