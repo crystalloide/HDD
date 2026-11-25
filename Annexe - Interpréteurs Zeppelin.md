@@ -1,4 +1,4 @@
-Tous les interpréteurs dont les notebooks des TP ont besoin sont déjà configurés dans zeppelin/conf/interpreter.json, sauf %md, que Zeppelin crée seul au démarrage. 
+Tous les interpréteurs dont les notebooks des TP ont besoin sont déjà configurés dans zeppelin/conf/interpreter.json, sauf **%md**, que Zeppelin crée seul au démarrage. 
 
 Le script fourni fait la vérification en conditions réelles.
 
