@@ -54,12 +54,13 @@ cd ~
 sudo rm -Rf HDD
 git clone https://github.com/crystalloide/HDD
 cd HDD
-
-# Tous les TP (recommandé)
+```
+```bash
+# Option n°1 : pour lancer tous les TP (recommandé)
 docker compose --profile full up -d --build
 ```
 ```bash
-# ou : version économe en ressources
+# Option n°1 2 : pour lancer une version économe en ressources
 docker compose -f docker-compose-light.yml --profile full up -d --build
 ```
 
