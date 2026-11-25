@@ -143,8 +143,11 @@ services:
         condition: service_healthy
     healthcheck:
       # "healthy" seulement quand au moins un NodeManager est bien enregistré
-      # et RUNNING (API REST du ResourceManager, sans lancer de JVM)
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:8088/ws/v1/cluster/nodes?states=RUNNING' | grep -q RUNNING"]
+      # et RUNNING (API REST du ResourceManager, sans lancer de JVM).
+      # L'UI du ResourceManager écoute sur l'IP de "resourcemanager", PAS sur
+      # localhost (yarn.resourcemanager.webapp.address = ${yarn.resourcemanager.hostname}:8088,
+      # sans bind-host) : on interroge donc le nom d'hôte.
+      test: ["CMD-SHELL", "curl -fs 'http://resourcemanager:8088/ws/v1/cluster/nodes?states=RUNNING' | grep -q RUNNING"]
       interval: 10s
       timeout: 5s
       retries: 30
