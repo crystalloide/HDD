@@ -20,7 +20,9 @@ Ensuite, on ajoute le référentiel Docker APT au système :
 
 La commande crée un fichier référentiel docker.list dans le répertoire /etc/apt/sources.list.d
 
+```bash
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
 
 #### Ensuite, on met à jour le gestionnaire de paquet local pour qu'il prenne en compte le référentiel nouvellement ajouté :
 
