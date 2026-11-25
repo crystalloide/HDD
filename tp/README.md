@@ -16,9 +16,9 @@ Montées en **lecture seule** dans le conteneur Zeppelin sous `/opt/tp`. Les not
 Les `pom.xml` déclarent les dépendances du cluster en `provided` (Hadoop 3.4.2, HBase 2.6.7, Pig 0.18.0), Java 17 :
 
 ```bash
-cd tp/tp1-mapreduce && mvn -q package     # target/clients.jar
-cd tp/tp3-hbase     && mvn -q package     # target/catalogue.jar
-cd tp/tp4-pig-hive  && mvn -q package     # target/referentiel-pig.jar
+cd ~/HDD/tp/tp1-mapreduce && mvn -q package     # target/clients.jar
+cd ~/HDD/tp/tp3-hbase     && mvn -q package     # target/catalogue.jar
+cd ~/HDD/tp/tp4-pig-hive  && mvn -q package     # target/referentiel-pig.jar
 ```
 
 Pour exécuter un jar construit sur l'hôte : `docker cp target/clients.jar zeppelin:/tmp/` puis, dans Zeppelin (`%sh`) :
