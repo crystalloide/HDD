@@ -144,7 +144,13 @@
 
 - **`%hive` / `%impala`** utilisent le pilote `hive-jdbc-4.1.0-standalone`, de
   la même version que HiveServer2. Impala parle le même protocole
-  HiveServer2 (`auth=noSasl`).
+  HiveServer2 (`auth=noSasl`). Le pilote est accompagné de `jansi-2.4.0.jar`
+  (même version que Hive 4.1.0), qu'il n'embarque pas : Zeppelin affiche la
+  progression des requêtes Hive avec la classe `InPlaceUpdate` de Hive, qui en
+  dépend. Sans lui, toute requête qui lance un DAG Tez (`GROUP BY`, jointure,
+  `COUNT(DISTINCT ...)`) échoue dans Zeppelin avec
+  `NoClassDefFoundError: org/fusesource/jansi/Ansi`, alors que la requête
+  elle-même s'exécute sur le cluster.
 
 - **HBase 2.6.7.** La branche 2.6 est la première où JDK 17 est officiellement
   supporté (2.5.x : support préliminaire), et elle supporte Hadoop 3.4 depuis la

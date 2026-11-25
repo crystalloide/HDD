@@ -40,7 +40,10 @@ TESTS = [
     ("%sh",            "%sh\nhdfs dfs -test -d /data && echo OK-sh", "OK-sh", ["namenode"]),
     ("%python",        "%python\nimport happybase, pandas\nprint('OK-python')", "OK-python", []),
     ("%file",          "%file\nls /", "user", ["namenode"]),
-    ("%hive",          "%hive\nSELECT 'OK-hive'", "OK-hive", ["hiveserver2"]),
+    # Requête qui lance un DAG Tez sur YARN : la barre de progression de
+    # Zeppelin (jansi) et le moteur Tez sont testés, pas seulement la connexion
+    ("%hive",          "%hive\nSELECT 'OK-hive' AS controle, COUNT(DISTINCT category) AS n\n"
+                       "FROM sales_db.transactions", "OK-hive", ["hiveserver2", "nodemanager"]),
     ("%impala",        "%impala\nSELECT 'OK-impala'", "OK-impala", ["impalad"]),
     ("%hbase",         "%hbase\nlist", "row(s)", ["hbase-master", "hbase-regionserver"]),
     ("%java",          "%java\npublic class Controle {\n"
